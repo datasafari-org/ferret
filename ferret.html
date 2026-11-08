@@ -1,0 +1,2539 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FERRET — Google Dork Builder</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23d786c6'/><stop offset='1' stop-color='%238b3b7a'/></linearGradient></defs><rect width='32' height='32' rx='7' fill='%23151a21'/><circle cx='13' cy='13' r='6.5' fill='none' stroke='url(%23g)' stroke-width='2.4'/><line x1='17.5' y1='17.5' x2='25' y2='25' stroke='url(%23g)' stroke-width='2.6' stroke-linecap='round'/><text x='13' y='16.2' font-family='ui-monospace,Menlo,monospace' font-weight='700' font-size='8' text-anchor='middle' fill='%23d786c6'>F!</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+  :root {
+    --ground:  #f5f2ec;
+    --paper:   #ffffff;
+    --ink:     #14161a;
+    --ink-2:   #3a3d44;
+    --meta:    #6a6e78;
+    --rule:    #e2ddd0;
+    --rule-2:  #ece8dc;
+    --accent:  #8b3b7a;
+    --accent-2:#f2dfef;
+    --accent-3:#c674b6;
+    --warn:    #b45608;
+    --warn-2:  #f6e2c9;
+    --pos:     #2f6d3e;
+    --pos-2:   #dee8db;
+    --info:    #0b6a76;
+    --info-2:  #d8ecef;
+    --code-bg: #f8f5ec;
+    --code-ink:#1c1e22;
+    --t-op:    #8b3b7a;
+    --t-str:   #0b6a76;
+    --t-mod:   #6b3b8b;
+    --t-neg:   #b04a0d;
+    --t-ph:    #b45608;
+    --bar-bg:  rgba(255,255,255,.86);
+    --shadow:  0 1px 0 rgba(0,0,0,.03), 0 20px 40px -28px rgba(20,25,40,.35);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:  #0e1015;
+      --paper:   #171a21;
+      --ink:     #e8e6df;
+      --ink-2:   #c4c5c0;
+      --meta:    #8a8f98;
+      --rule:    #262a33;
+      --rule-2:  #1c2028;
+      --accent:  #d786c6;
+      --accent-2:#2e1a2b;
+      --accent-3:#a94f97;
+      --warn:    #e6a464;
+      --warn-2:  #33241a;
+      --pos:     #7fca8e;
+      --pos-2:   #142518;
+      --info:    #74c0d4;
+      --info-2:  #142225;
+      --code-bg: #10141b;
+      --code-ink:#dcdcd4;
+      --t-op:    #d786c6;
+      --t-str:   #7cc9d4;
+      --t-mod:   #b78ce0;
+      --t-neg:   #f0846c;
+      --t-ph:    #e6a464;
+      --bar-bg:  rgba(23,26,33,.86);
+      --shadow:  0 1px 0 rgba(0,0,0,.4), 0 20px 40px -22px rgba(0,0,0,.6);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:  #0e1015;
+    --paper:   #171a21;
+    --ink:     #e8e6df;
+    --ink-2:   #c4c5c0;
+    --meta:    #8a8f98;
+    --rule:    #262a33;
+    --rule-2:  #1c2028;
+    --accent:  #d786c6;
+    --accent-2:#2e1a2b;
+    --accent-3:#a94f97;
+    --warn:    #e6a464;
+    --warn-2:  #33241a;
+    --pos:     #7fca8e;
+    --pos-2:   #142518;
+    --info:    #74c0d4;
+    --info-2:  #142225;
+    --code-bg: #10141b;
+    --code-ink:#dcdcd4;
+    --t-op:    #d786c6;
+    --t-str:   #7cc9d4;
+    --t-mod:   #b78ce0;
+    --t-neg:   #f0846c;
+    --t-ph:    #e6a464;
+    --bar-bg:  rgba(23,26,33,.86);
+    --shadow:  0 1px 0 rgba(0,0,0,.4), 0 20px 40px -22px rgba(0,0,0,.6);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, Segoe UI, sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+    margin: 0;
+    padding: 0 20px 120px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  ::selection { background: var(--accent-2); color: var(--accent); }
+
+  /* ============ FLOATING PREVIEW BAR ============ */
+  .bar {
+    position: sticky;
+    top: 12px;
+    z-index: 30;
+    width: 100%;
+    max-width: 960px;
+    margin: 12px auto 0;
+    padding: 12px 14px;
+    background: var(--bar-bg);
+    backdrop-filter: saturate(160%) blur(14px);
+    -webkit-backdrop-filter: saturate(160%) blur(14px);
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px 12px;
+    box-shadow: 0 8px 24px -18px rgba(0,0,0,.35);
+  }
+  .bar .brand-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .bar .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--accent);
+    font-family: "JetBrains Mono", monospace;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  .bar .brand::before {
+    content: "";
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent);
+  }
+  .bar .brand small {
+    font-weight: 400;
+    color: var(--meta);
+    letter-spacing: 0;
+    text-transform: none;
+    font-size: 11px;
+    margin-left: 8px;
+  }
+  .bar .btns {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .bar .target-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 10px;
+    align-items: center;
+  }
+  .bar .target-row label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10.5px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--meta);
+    white-space: nowrap;
+  }
+  .bar .target-row input {
+    width: 100%;
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 6px 10px;
+    color: var(--ink);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .bar .target-row input:focus { border-color: var(--accent); }
+  .bar .target-row input::placeholder { color: var(--meta); }
+  .bar .target-hint {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10.5px;
+    color: var(--meta);
+  }
+  .bar .target-hint code { color: var(--t-ph); }
+
+  .bar .preview-wrap { position: relative; }
+  .bar .preview {
+    min-height: 44px;
+    padding: 10px 12px;
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--code-ink);
+    word-break: break-word;
+    white-space: pre-wrap;
+  }
+  .bar .preview.empty { color: var(--meta); font-style: italic; }
+  .bar .preview .op    { color: var(--t-op); font-weight: 500; }
+  .bar .preview .str   { color: var(--t-str); }
+  .bar .preview .neg   { color: var(--t-neg); font-weight: 500; }
+  .bar .preview .grp   { color: var(--t-mod); font-weight: 500; }
+  .bar .preview .ph    { color: var(--t-ph); background: var(--warn-2); padding: 0 3px; border-radius: 3px; font-weight: 500; }
+  .bar .preview-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 6px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10.5px;
+    color: var(--meta);
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .bar .preview-meta .warn-chip {
+    color: var(--warn);
+    background: var(--warn-2);
+    padding: 1px 8px;
+    border-radius: 3px;
+    letter-spacing: .04em;
+  }
+
+  .btn {
+    background: var(--paper);
+    color: var(--ink-2);
+    border: 1px solid var(--rule);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font: inherit;
+    font-size: 12.5px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: color .15s, border-color .15s, background .15s;
+    font-family: "IBM Plex Sans", sans-serif;
+  }
+  .btn:hover  { color: var(--accent); border-color: var(--accent); }
+  .btn.done   { color: var(--pos); border-color: var(--pos); background: var(--pos-2); }
+  .btn.warn   { color: var(--warn); border-color: var(--warn); background: var(--warn-2); }
+  .btn.primary{ background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn.primary:hover { background: var(--accent-3); border-color: var(--accent-3); color: #fff; }
+  .btn svg { width: 14px; height: 14px; }
+  .btn.small { padding: 4px 8px; font-size: 11.5px; }
+  .btn.icon  { padding: 6px 8px; }
+
+  /* Split launch button */
+  .split-btn { display: inline-flex; position: relative; }
+  .split-btn .btn.primary { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+  .split-btn .btn.dropdown {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+    border-left: 1px solid rgba(255,255,255,.25);
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    padding: 4px 6px;
+  }
+  .split-btn .btn.dropdown:hover { background: var(--accent-3); border-color: var(--accent-3); }
+  .engine-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    min-width: 200px;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 4px;
+    box-shadow: var(--shadow);
+    display: none;
+    z-index: 40;
+  }
+  .engine-menu.open { display: block; }
+  .engine-menu button {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    background: transparent;
+    border: 0;
+    color: var(--ink);
+    padding: 6px 10px;
+    border-radius: 4px;
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    text-align: left;
+    gap: 12px;
+  }
+  .engine-menu button:hover { background: var(--accent-2); color: var(--accent); }
+  .engine-menu button small { color: var(--meta); font-size: 11px; font-family: "JetBrains Mono", monospace; }
+
+  /* ============ PAGE ============ */
+  main.page { width: 100%; max-width: 960px; padding-top: 30px; }
+
+  header.intro { margin: 20px 0 42px; }
+  .eyebrow {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 12px;
+  }
+  h1 {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-weight: 700;
+    font-size: 40px;
+    line-height: 1.05;
+    letter-spacing: -0.025em;
+    text-wrap: balance;
+    color: var(--ink);
+    margin: 0 0 14px;
+  }
+  h1 .hi { color: var(--accent); border-bottom: 3px solid var(--accent); padding-bottom: 2px; }
+  .lede {
+    font-size: 16px;
+    color: var(--ink-2);
+    max-width: 62ch;
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  /* ============ RECIPES ============ */
+  .recipes {
+    margin: 32px 0 0;
+    padding: 18px 20px;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+  }
+  .recipes h2 {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: -0.005em;
+    margin: 0 0 4px;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: space-between;
+  }
+  .recipes h2 .chip {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: var(--accent-2);
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-weight: 500;
+  }
+  .recipes p.hint { font-size: 13px; color: var(--meta); margin: 0 0 14px; max-width: 60ch; }
+  .recipe-tools {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .recipe-search {
+    flex: 1;
+    min-width: 180px;
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 6px 10px;
+    color: var(--ink);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12.5px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .recipe-search:focus { border-color: var(--accent); }
+  .recipe-search::placeholder { color: var(--meta); }
+  .cat-filter { display: flex; gap: 4px; flex-wrap: wrap; }
+  .cat-filter button {
+    background: transparent;
+    border: 1px solid var(--rule);
+    color: var(--meta);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10.5px;
+    letter-spacing: .04em;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all .15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .cat-filter button:hover { color: var(--accent); border-color: var(--accent); }
+  .cat-filter button.on {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .cat-filter button .cnt {
+    font-size: 9.5px;
+    opacity: .8;
+    font-weight: 400;
+  }
+  .recipe-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 8px;
+  }
+  .recipe-section-title {
+    grid-column: 1 / -1;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10.5px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--meta);
+    margin: 8px 0 -2px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .recipe-section-title:first-child { margin-top: 0; }
+  .recipe {
+    text-align: left;
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+    font-family: "IBM Plex Sans", sans-serif;
+    color: var(--ink);
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    position: relative;
+  }
+  .recipe:hover { border-color: var(--accent); background: var(--accent-2); }
+  .recipe .r-title { font-weight: 600; font-size: 13.5px; padding: 0 46px 0 20px; }
+  .recipe .r-desc  { font-size: 11.5px; color: var(--meta); font-family: "JetBrains Mono", monospace; line-height: 1.4; padding-left: 20px; }
+  .recipe .r-cat {
+    position: absolute;
+    top: 8px; right: 10px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 9.5px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: var(--accent-2);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-weight: 500;
+  }
+  .recipe .r-cat.CVD    { color: var(--warn);  background: var(--warn-2); }
+  .recipe .r-cat.EXPOSE { color: var(--info);  background: var(--info-2); }
+  .recipe .r-cat.OSINT  { color: var(--pos);   background: var(--pos-2); }
+  .recipe .r-cat.PEOPLE { color: var(--accent);background: var(--accent-2); }
+  .recipe .r-cat.DEV    { color: var(--t-mod); background: color-mix(in oklab, var(--t-mod) 14%, transparent); }
+  .recipe .r-cat.FILES  { color: var(--ink-2); background: var(--rule-2); }
+  .recipe .r-cat.USER   { color: var(--pos);   background: var(--pos-2); }
+  .recipe .r-star {
+    position: absolute;
+    top: 6px; left: 6px;
+    background: transparent;
+    border: 0;
+    color: var(--meta);
+    font-size: 15px;
+    cursor: pointer;
+    padding: 2px 4px;
+    line-height: 1;
+    opacity: .55;
+    transition: color .15s, opacity .15s, transform .1s;
+  }
+  .recipe .r-star:hover { color: var(--warn); opacity: 1; transform: scale(1.15); }
+  .recipe .r-star.on   { color: var(--warn); opacity: 1; }
+  .recipe .r-actions {
+    position: absolute;
+    top: 4px; right: 4px;
+    display: none;
+    gap: 2px;
+  }
+  .recipe.user:hover .r-actions { display: flex; }
+  .recipe.user .r-cat { display: none; }
+  .recipe .r-actions button {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    color: var(--meta);
+    padding: 2px 5px;
+    font-size: 11px;
+    border-radius: 3px;
+    cursor: pointer;
+    line-height: 1;
+    font-family: "JetBrains Mono", monospace;
+  }
+  .recipe .r-actions button:hover { color: var(--warn); border-color: var(--warn); }
+  .recipe-empty {
+    grid-column: 1 / -1;
+    color: var(--meta);
+    font-style: italic;
+    font-size: 13px;
+    padding: 20px 0;
+    text-align: center;
+  }
+
+  /* ============ PHASES ============ */
+  section.phase {
+    margin-top: 44px;
+    padding-top: 24px;
+    border-top: 1px solid var(--rule);
+    scroll-margin-top: 280px;
+  }
+  .phase-head {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 14px;
+    align-items: baseline;
+    margin-bottom: 8px;
+  }
+  .phase-num {
+    font-family: "JetBrains Mono", monospace;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--accent);
+    background: var(--accent-2);
+    padding: 3px 9px;
+    border-radius: 4px;
+    letter-spacing: .1em;
+  }
+  .phase-head h2 {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-weight: 600;
+    font-size: 22px;
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+    margin: 0;
+    color: var(--ink);
+  }
+  .phase-lede {
+    color: var(--meta);
+    font-size: 13.5px;
+    margin: 0 0 20px 62px;
+    max-width: 62ch;
+  }
+  @media (max-width: 600px) {
+    .phase-lede { margin-left: 0; }
+  }
+
+  .field-group {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow);
+  }
+  .field-group h3 {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--ink);
+    margin: 0 0 4px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .field-group h3 code {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    color: var(--accent);
+    background: var(--accent-2);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-weight: 500;
+  }
+  .field-group p.hint { font-size: 12.5px; color: var(--meta); margin: 0 0 10px; max-width: 62ch; }
+  .field-group + .field-group { margin-top: 0; }
+
+  /* Chip inputs */
+  .chip-input {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    min-height: 38px;
+    cursor: text;
+    transition: border-color .15s;
+  }
+  .chip-input:focus-within { border-color: var(--accent); }
+  .chip-input input {
+    flex: 1;
+    min-width: 100px;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12.5px;
+    padding: 4px 2px;
+    outline: none;
+  }
+  .chip-input input::placeholder { color: var(--meta); }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 4px 3px 8px;
+    background: var(--accent-2);
+    color: var(--accent);
+    border-radius: 4px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    font-weight: 500;
+    max-width: 100%;
+  }
+  .chip.neg   { background: var(--warn-2); color: var(--warn); }
+  .chip.exact { background: color-mix(in oklab, var(--t-str) 15%, transparent); color: var(--t-str); }
+  .chip.mode-or { background: color-mix(in oklab, var(--t-mod) 15%, transparent); color: var(--t-mod); }
+  .chip button {
+    background: transparent;
+    border: 0;
+    color: inherit;
+    cursor: pointer;
+    padding: 0 4px;
+    font-size: 15px;
+    line-height: 1;
+    opacity: .7;
+    border-radius: 3px;
+  }
+  .chip button:hover { opacity: 1; background: rgba(0,0,0,.08); }
+  :root[data-theme="dark"] .chip button:hover,
+  :root:not([data-theme="light"]) .chip button:hover { background: rgba(255,255,255,.1); }
+
+  .row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  @media (max-width: 600px) {
+    .row { grid-template-columns: 1fr; }
+  }
+
+  .txt, .num, .date {
+    width: 100%;
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 7px 10px;
+    color: var(--ink);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12.5px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .txt:focus, .num:focus, .date:focus { border-color: var(--accent); }
+  .txt::placeholder, .num::placeholder, .date::placeholder { color: var(--meta); }
+
+  /* Segmented control */
+  .seg {
+    display: inline-flex;
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 3px;
+    gap: 2px;
+  }
+  .seg button {
+    background: transparent;
+    border: 0;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    color: var(--meta);
+    cursor: pointer;
+    font-weight: 500;
+  }
+  .seg button.active {
+    background: var(--accent);
+    color: #fff;
+  }
+  .seg button:hover:not(.active) { color: var(--ink); }
+
+  .picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .picker button {
+    background: transparent;
+    border: 1px solid var(--rule);
+    color: var(--ink-2);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11.5px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .picker button:hover { color: var(--accent); border-color: var(--accent); }
+  .picker button.on {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+
+  .side-by-side {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto;
+    gap: 8px;
+    align-items: center;
+  }
+  .side-by-side .glue {
+    color: var(--meta);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+  }
+  .side-by-side .num-tight { max-width: 80px; }
+
+  details.legend {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--meta);
+  }
+  details.legend summary {
+    cursor: pointer;
+    color: var(--meta);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: .06em;
+  }
+  details.legend p { margin: 6px 0 0; font-size: 12px; color: var(--ink-2); line-height: 1.5; }
+  details.legend code {
+    font-family: "JetBrains Mono", monospace;
+    background: var(--code-bg);
+    color: var(--code-ink);
+    padding: 1px 4px;
+    border-radius: 3px;
+    border: 1px solid var(--rule-2);
+    font-size: 11.5px;
+  }
+
+  /* ============ RAW / FINAL ============ */
+  .final-section, .history-section, .refbox {
+    margin-top: 32px;
+    padding: 20px 22px;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+  }
+  .final-section h2, .history-section h2, .refbox h2 {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-weight: 600;
+    font-size: 18px;
+    margin: 0 0 4px;
+    color: var(--ink);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .final-section p.hint, .history-section p.hint, .refbox p.hint { font-size: 13px; color: var(--meta); margin: 0 0 14px; }
+  textarea.raw, textarea.bulk {
+    width: 100%;
+    min-height: 90px;
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 12px 14px;
+    color: var(--code-ink);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    resize: vertical;
+    outline: none;
+    transition: border-color .15s;
+  }
+  textarea.raw:focus, textarea.bulk:focus { border-color: var(--accent); }
+  .actions-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    align-items: center;
+  }
+  .actions-row .spacer { flex: 1; }
+
+  /* History items */
+  .h-list { display: flex; flex-direction: column; gap: 8px; }
+  .h-item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: start;
+    gap: 12px;
+    padding: 10px 12px;
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+  }
+  .h-item .q { color: var(--code-ink); word-break: break-word; line-height: 1.5; }
+  .h-item .m {
+    color: var(--meta);
+    font-size: 11px;
+    margin-top: 4px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .h-item .notes {
+    color: var(--ink-2);
+    font-size: 12px;
+    margin-top: 4px;
+    padding: 4px 8px;
+    background: var(--paper);
+    border-left: 2px solid var(--info);
+    border-radius: 2px;
+    font-family: "IBM Plex Sans", sans-serif;
+    white-space: pre-wrap;
+  }
+  .h-item .h-btns { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+  .h-empty { color: var(--meta); font-style: italic; font-size: 13px; padding: 8px 0; }
+  .status-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 8px;
+    border-radius: 3px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border: 0;
+    font-weight: 500;
+  }
+  .status-chip.open      { color: var(--warn); background: var(--warn-2); }
+  .status-chip.reported  { color: var(--info); background: var(--info-2); }
+  .status-chip.resolved  { color: var(--pos);  background: var(--pos-2); }
+
+  /* Modal */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.45);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 100;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    max-width: 640px;
+    width: 100%;
+    max-height: 88vh;
+    overflow: auto;
+    padding: 22px 24px;
+    box-shadow: 0 20px 60px -10px rgba(0,0,0,.5);
+  }
+  .modal h3 {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-weight: 600;
+    font-size: 18px;
+    margin: 0 0 6px;
+    color: var(--ink);
+  }
+  .modal p { font-size: 13px; color: var(--meta); margin: 0 0 14px; }
+  .modal textarea {
+    width: 100%;
+    min-height: 220px;
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 12px 14px;
+    color: var(--code-ink);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12.5px;
+    line-height: 1.55;
+    resize: vertical;
+    outline: none;
+  }
+  .modal textarea:focus { border-color: var(--accent); }
+  .modal input.txt { margin-bottom: 10px; }
+  .modal .m-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+  .kbd {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    padding: 2px 6px;
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    color: var(--ink);
+  }
+  .shortcut-list { display: flex; flex-direction: column; gap: 8px; }
+  .shortcut-list div {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--rule-2);
+    font-size: 13.5px;
+    color: var(--ink-2);
+  }
+
+  /* Regex reference */
+  .refbox .ref-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 10px;
+    margin-top: 6px;
+  }
+  .refbox .ref-item {
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11.5px;
+  }
+  .refbox .ref-item h4 {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: 12.5px;
+    margin: 0 0 6px;
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .refbox .ref-item .p-pattern {
+    display: block;
+    font-family: "JetBrains Mono", monospace;
+    color: var(--accent);
+    background: var(--accent-2);
+    padding: 3px 6px;
+    border-radius: 3px;
+    font-size: 10.5px;
+    margin: 0 0 6px;
+    word-break: break-all;
+    overflow-wrap: anywhere;
+    line-height: 1.5;
+  }
+  .refbox .ref-item .p-example {
+    color: var(--code-ink);
+    word-break: break-all;
+    overflow-wrap: anywhere;
+    margin: 4px 0 2px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11.5px;
+  }
+  .refbox .ref-item .p-desc {
+    color: var(--meta);
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: 12px;
+    margin: 4px 0 0;
+    line-height: 1.4;
+  }
+
+  /* Bulk results */
+  .bulk-results { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+  .bulk-results .b-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 10px;
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11.5px;
+  }
+  .bulk-results .b-row .q { word-break: break-word; color: var(--code-ink); line-height: 1.5; }
+  .bulk-results .b-row .b-btns { display: flex; gap: 4px; }
+
+  footer {
+    margin-top: 60px;
+    padding-top: 18px;
+    border-top: 1px solid var(--rule);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    color: var(--meta);
+    letter-spacing: .04em;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+  }
+  footer a { color: var(--meta); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+  footer a:hover { color: var(--accent); }
+
+  @media (max-width: 600px) {
+    .bar .target-row { grid-template-columns: 1fr; }
+    .bar .target-hint { display: none; }
+  }
+</style>
+
+<div class="bar" role="region" aria-label="Live preview">
+  <div class="brand-row">
+    <span class="brand">FERRET <small>Find Everything Relevant, Refined &amp; Enumerated Thoroughly</small></span>
+    <div class="btns">
+      <button class="btn small icon" id="theme" title="Toggle light / dark" aria-label="Toggle theme">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      </button>
+      <button class="btn small icon" id="shortcuts-btn" title="Keyboard shortcuts" aria-label="Shortcuts">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 9h6v6H9zM4 4h3M17 4h3M4 20h3M17 20h3M4 12h1M19 12h1M12 4v1M12 19v1"/></svg>
+      </button>
+      <button class="btn small" id="share-dork" title="Copy shareable URL of the current builder state">share</button>
+      <button class="btn small warn" id="reset-all" title="Clear all fields">reset</button>
+      <button class="btn small" id="cvd-btn-top" title="Open the CVD disclosure email template">📨 CVD email</button>
+      <button class="btn small" id="save-dork">save</button>
+      <button class="btn small" id="copy-dork">copy</button>
+      <div class="split-btn">
+        <button class="btn small primary" id="launch-dork" title="Launch in Google (⌘/Ctrl + Enter)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></svg>
+          launch
+        </button>
+        <button class="btn small dropdown primary" id="engine-toggle" aria-label="Other search engines">▾</button>
+        <div class="engine-menu" id="engine-menu"></div>
+      </div>
+    </div>
+  </div>
+  <div class="target-row">
+    <label for="in-target">target</label>
+    <input id="in-target" type="text" spellcheck="false" autocomplete="off" placeholder="example.com — used to fill {{target}} placeholders in recipes">
+    <span class="target-hint">placeholder: <code>{{target}}</code></span>
+  </div>
+  <div class="preview-wrap">
+    <div class="preview empty" id="preview">nothing yet — set a target, then load a recipe or fill in phase 1</div>
+    <div class="preview-meta">
+      <span id="preview-len">0 chars</span>
+      <span id="preview-warn" style="display:none;" class="warn-chip">near URL length limit (~2000)</span>
+    </div>
+  </div>
+</div>
+
+<main class="page">
+  <header class="intro">
+    <p class="eyebrow">OSINT · CVD · guided query construction</p>
+    <h1><span class="hi">FERRET</span> out what Google knows about your target.</h1>
+    <p class="lede">Every operator Google respects, ordered as a workflow. Set a target once and recipes substitute it in for you. Launch to any of six search engines, share the exact builder state with a colleague via URL, and keep saved dorks annotated with disclosure notes and status.</p>
+  </header>
+
+  <section class="recipes" aria-label="Starter recipes">
+    <h2>Starter recipes <span class="chip">one-click</span></h2>
+    <p class="hint">Load a common OSINT pattern into the builder, then tune from there. Overwrites everything currently in the builder — save first if you care about it. Recipes with <code style="font-family:'JetBrains Mono',monospace;color:var(--t-ph);background:var(--warn-2);padding:1px 4px;border-radius:3px;">{{target}}</code> pull from the target field above.</p>
+    <div class="recipe-tools">
+      <input type="text" class="recipe-search" id="recipe-search" placeholder="search recipes… (e.g. aws, git, env, jenkins)">
+      <div class="cat-filter" id="cat-filter"></div>
+      <button class="btn small" id="add-recipe" title="Save the current builder as a reusable recipe">+ recipe</button>
+    </div>
+    <div class="recipe-grid" id="recipe-grid"></div>
+  </section>
+
+  <!-- PHASE 1 : SCOPE -->
+  <section class="phase" id="phase-scope">
+    <div class="phase-head">
+      <span class="phase-num">01</span>
+      <h2>Scope — where should Google look?</h2>
+    </div>
+    <p class="phase-lede">Confine the search to one or more domains, or exclude noisy ones. Empty = the whole web.</p>
+
+    <div class="field-group">
+      <h3><code>site:</code> restrict to domains</h3>
+      <p class="hint">Type a domain and press Enter. Adds an implicit <code>OR</code> when you add more than one.</p>
+      <div class="chip-input" id="in-site">
+        <input type="text" placeholder="e.g. example.com  |  linkedin.com/in  |  s3.amazonaws.com  |  {{target}}">
+      </div>
+    </div>
+
+    <div class="field-group">
+      <h3><code>-site:</code> exclude domains</h3>
+      <p class="hint">Cuts noise. Add mirrors, aggregators, or a competitor you already scraped.</p>
+      <div class="chip-input neg" id="in-site-neg">
+        <input type="text" placeholder="e.g. pinterest.com  |  archive.org">
+      </div>
+    </div>
+
+    <div class="field-group">
+      <h3>Related & meta operators</h3>
+      <p class="hint">Rarely stacked with the rest — Google usually runs them stand-alone.</p>
+      <div class="row">
+        <div>
+          <label style="font-size:11px;letter-spacing:.06em;color:var(--meta);text-transform:uppercase;">related:</label>
+          <input type="text" class="txt" id="in-related" placeholder="find sites similar to…">
+        </div>
+        <div>
+          <label style="font-size:11px;letter-spacing:.06em;color:var(--meta);text-transform:uppercase;">cache:</label>
+          <input type="text" class="txt" id="in-cache" placeholder="google's cached copy of a URL">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PHASE 2 : KEYWORDS -->
+  <section class="phase" id="phase-keywords">
+    <div class="phase-head">
+      <span class="phase-num">02</span>
+      <h2>Keywords — what should the page contain?</h2>
+    </div>
+    <p class="phase-lede">Plain terms are AND'd. Wrap phrases in quotes for exact match. Prefix with <code>-</code> to exclude. Group alternatives with OR.</p>
+
+    <div class="field-group">
+      <h3>Terms</h3>
+      <p class="hint">Type, press Enter to add. Use the mode selector to change how the term is treated.</p>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--meta);">next term is</span>
+        <div class="seg" id="kw-mode">
+          <button data-mode="plain"   class="active">plain</button>
+          <button data-mode="exact">"exact"</button>
+          <button data-mode="exclude">-exclude</button>
+          <button data-mode="or">OR-group</button>
+        </div>
+      </div>
+      <div class="chip-input" id="in-keywords">
+        <input type="text" placeholder="e.g. password  |  data breach  |  vulnerability  |  {{target}}">
+      </div>
+      <details class="legend">
+        <summary>legend</summary>
+        <p>
+          <code>plain</code> — added as-is, AND'd with the rest.<br>
+          <code>"exact"</code> — wrapped in quotes for exact-phrase match.<br>
+          <code>-exclude</code> — prefixed with <code>-</code>, page must not contain it.<br>
+          <code>OR-group</code> — collected into a <code>(a OR b OR c)</code> block, page must contain at least one.
+        </p>
+      </details>
+    </div>
+
+    <div class="field-group">
+      <h3>Wildcard &amp; range shortcuts</h3>
+      <p class="hint">Google understands <code>*</code> as a single word wildcard inside phrases, and <code>..</code> as a numeric range.</p>
+      <div class="row">
+        <div>
+          <label style="font-size:11px;letter-spacing:.06em;color:var(--meta);text-transform:uppercase;">wildcard phrase</label>
+          <input type="text" class="txt" id="in-wild" placeholder='e.g. "internal * report"'>
+        </div>
+        <div>
+          <label style="font-size:11px;letter-spacing:.06em;color:var(--meta);text-transform:uppercase;">numeric range</label>
+          <div class="side-by-side">
+            <input type="text" class="num" id="in-rng-min" placeholder="2020">
+            <span class="glue">..</span>
+            <input type="text" class="num" id="in-rng-max" placeholder="2024">
+            <span class="glue" style="opacity:.5;"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <h3>Proximity — <code>AROUND(N)</code></h3>
+      <p class="hint">Two terms must appear within N words of each other. Great for "person + role", "org + city", "vendor + product".</p>
+      <div class="side-by-side">
+        <input type="text" class="txt" id="in-around-a" placeholder="term A">
+        <span class="glue">AROUND(</span>
+        <input type="text" class="num num-tight" id="in-around-n" placeholder="3">
+        <span class="glue">) term B →</span>
+      </div>
+      <input type="text" class="txt" style="margin-top:6px;" id="in-around-b" placeholder="term B">
+    </div>
+  </section>
+
+  <!-- PHASE 3 : PLACEMENT -->
+  <section class="phase" id="phase-placement">
+    <div class="phase-head">
+      <span class="phase-num">03</span>
+      <h2>Placement — where in the page?</h2>
+    </div>
+    <p class="phase-lede">Restrict to the title, URL, visible body, or anchor text. Use the plural variant (<code>allintitle:</code> etc.) when every term must appear.</p>
+
+    <div class="field-group">
+      <h3><code>intitle:</code> word must appear in the &lt;title&gt;</h3>
+      <div class="chip-input" id="in-intitle">
+        <input type="text" placeholder='e.g. "index of"  |  login  |  admin'>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <h3><code>inurl:</code> word must appear in the URL</h3>
+      <div class="chip-input" id="in-inurl">
+        <input type="text" placeholder="e.g. admin  |  wp-content  |  .git">
+      </div>
+    </div>
+
+    <div class="field-group">
+      <h3><code>intext:</code> word must appear in the visible body</h3>
+      <div class="chip-input" id="in-intext">
+        <input type="text" placeholder='e.g. "confidential"  |  "internal use only"'>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <h3><code>inanchor:</code> word must appear in link anchor text</h3>
+      <div class="chip-input" id="in-inanchor">
+        <input type="text" placeholder="e.g. click here to download">
+      </div>
+    </div>
+
+    <div class="field-group">
+      <h3>All-of variants</h3>
+      <p class="hint">Every term in the box must appear. Google interprets these differently — they don't stack neatly with other operators, so use them alone or as the dominant filter.</p>
+      <div class="row">
+        <div>
+          <label style="font-size:11px;letter-spacing:.06em;color:var(--meta);text-transform:uppercase;">allintitle:</label>
+          <input type="text" class="txt" id="in-allintitle" placeholder="every word must be in title">
+        </div>
+        <div>
+          <label style="font-size:11px;letter-spacing:.06em;color:var(--meta);text-transform:uppercase;">allinurl:</label>
+          <input type="text" class="txt" id="in-allinurl" placeholder="every word must be in URL">
+        </div>
+        <div>
+          <label style="font-size:11px;letter-spacing:.06em;color:var(--meta);text-transform:uppercase;">allintext:</label>
+          <input type="text" class="txt" id="in-allintext" placeholder="every word must be in body">
+        </div>
+        <div>
+          <label style="font-size:11px;letter-spacing:.06em;color:var(--meta);text-transform:uppercase;">allinanchor:</label>
+          <input type="text" class="txt" id="in-allinanchor" placeholder="every word must be in anchor">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PHASE 4 : FILETYPE -->
+  <section class="phase" id="phase-filetype">
+    <div class="phase-head">
+      <span class="phase-num">04</span>
+      <h2>Filetype — what kind of document?</h2>
+    </div>
+    <p class="phase-lede">Restrict to a specific extension. Multiple types are OR'd — Google returns pages of any listed type.</p>
+
+    <div class="field-group">
+      <h3><code>filetype:</code> extension picker</h3>
+      <p class="hint">Click the presets or type a custom extension. Everything shown here is legitimately indexed by Google.</p>
+      <div class="chip-input" id="in-filetype">
+        <input type="text" placeholder="e.g. pdf  |  xlsx  |  env  |  git">
+      </div>
+      <div class="picker" id="filetype-picker"></div>
+    </div>
+  </section>
+
+  <!-- PHASE 5 : TIME -->
+  <section class="phase" id="phase-time">
+    <div class="phase-head">
+      <span class="phase-num">05</span>
+      <h2>Time — when was it published?</h2>
+    </div>
+    <p class="phase-lede">Both sides accept ISO dates (<code>YYYY-MM-DD</code>) or just years. Use either or both.</p>
+
+    <div class="field-group">
+      <h3><code>after:</code> / <code>before:</code></h3>
+      <div class="row">
+        <div>
+          <label style="font-size:11px;letter-spacing:.06em;color:var(--meta);text-transform:uppercase;">after (inclusive)</label>
+          <input type="text" class="txt" id="in-after" placeholder="2023-01-01  |  2023">
+        </div>
+        <div>
+          <label style="font-size:11px;letter-spacing:.06em;color:var(--meta);text-transform:uppercase;">before (inclusive)</label>
+          <input type="text" class="txt" id="in-before" placeholder="2024-12-31  |  2024">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PHASE 6 : SOCIAL / MISC -->
+  <section class="phase" id="phase-social">
+    <div class="phase-head">
+      <span class="phase-num">06</span>
+      <h2>Social &amp; extras</h2>
+    </div>
+    <p class="phase-lede">Rarely game-changing, occasionally the whole point. Everything here is optional.</p>
+
+    <div class="field-group">
+      <h3>Social markers</h3>
+      <p class="hint">Google treats <code>@</code>, <code>#</code>, and <code>$</code> as literals when leading a token — useful for handles, hashtags, and prices.</p>
+      <div class="chip-input" id="in-social">
+        <input type="text" placeholder="e.g. @company  |  #databreach  |  $999">
+      </div>
+    </div>
+
+    <div class="field-group">
+      <h3>Custom operators</h3>
+      <p class="hint">Anything Google supports but this UI doesn't gate. Included verbatim at the end.</p>
+      <div class="row">
+        <div>
+          <label style="font-size:11px;letter-spacing:.06em;color:var(--meta);text-transform:uppercase;">info:</label>
+          <input type="text" class="txt" id="in-info" placeholder="URL to look up">
+        </div>
+        <div>
+          <label style="font-size:11px;letter-spacing:.06em;color:var(--meta);text-transform:uppercase;">link:</label>
+          <input type="text" class="txt" id="in-link" placeholder="URL (mostly deprecated)">
+        </div>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <h3>Raw addendum</h3>
+      <p class="hint">Anything typed here is appended verbatim at the very end of the query.</p>
+      <input type="text" class="txt" id="in-raw-extra" placeholder="e.g.  loc:amsterdam  |  daterange:2459580-2459945">
+    </div>
+  </section>
+
+  <!-- ASSEMBLED / RAW EDIT -->
+  <section class="final-section">
+    <h2>Assembled query</h2>
+    <p class="hint">Refine here directly for tweaks the wizard doesn't cover — parentheses, weird operator combos. Editing this <em>overrides</em> the live-assembled version until you clear it.</p>
+    <textarea class="raw" id="raw-edit" placeholder="the assembled query lands here — edit freely, or leave empty to keep it in sync with the phases above"></textarea>
+    <div class="actions-row">
+      <button class="btn small" id="raw-fill">fill from phases</button>
+      <button class="btn small warn" id="raw-clear">clear override</button>
+      <button class="btn small" id="reverse-import">import query…</button>
+      <button class="btn small" id="bulk-btn">bulk targets…</button>
+      <button class="btn small" id="cvd-btn">CVD template…</button>
+      <span class="spacer"></span>
+      <button class="btn small" id="copy-dork-2">copy</button>
+      <button class="btn small primary" id="launch-dork-2">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></svg>
+        launch in Google
+      </button>
+    </div>
+  </section>
+
+  <!-- HISTORY -->
+  <section class="history-section">
+    <h2>
+      Saved &amp; recent
+      <span style="display:flex;gap:6px;">
+        <button class="btn small" id="export-saved">export</button>
+        <button class="btn small" id="import-saved">import</button>
+        <button class="btn small warn" id="clear-history">clear all</button>
+      </span>
+    </h2>
+    <p class="hint">Every dork you launch is added to Recent automatically. Save promotes one to Saved with a name — and optionally notes and a disclosure status.</p>
+    <div>
+      <h3 style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--meta);margin:14px 0 6px;">Saved</h3>
+      <div class="h-list" id="saved-list"></div>
+    </div>
+    <div>
+      <h3 style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--meta);margin:18px 0 6px;">Recent (last 20)</h3>
+      <div class="h-list" id="recent-list"></div>
+    </div>
+    <input type="file" id="import-file" accept="application/json,.json" style="display:none;">
+  </section>
+
+  <!-- REGEX / TOKEN REFERENCE -->
+  <section class="refbox">
+    <h2>
+      Secret pattern reference
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--meta);letter-spacing:.1em;text-transform:uppercase;">quick recognition</span>
+    </h2>
+    <p class="hint">When a hit looks like it <em>might</em> be a real secret, use these prefixes and shapes to confirm what provider it belongs to before you disclose.</p>
+    <div class="ref-list" id="ref-list"></div>
+  </section>
+
+  <footer>
+    <span>FERRET · v1 · <a href="https://github.com/datasafari" target="_blank" rel="noopener">datasafari</a></span>
+    <span>
+      <a id="footer-shortcuts">shortcuts</a>
+      &nbsp;·&nbsp;
+      every value autosaved to your browser
+    </span>
+  </footer>
+</main>
+
+<!-- ===== MODALS ===== -->
+<div class="modal-backdrop" id="modal-shortcuts">
+  <div class="modal">
+    <h3>Keyboard shortcuts</h3>
+    <p>All shortcuts use <span class="kbd">⌘</span> on macOS and <span class="kbd">Ctrl</span> elsewhere.</p>
+    <div class="shortcut-list">
+      <div><span>Launch current dork in Google</span> <span><span class="kbd">⌘</span> + <span class="kbd">Enter</span></span></div>
+      <div><span>Focus recipe search</span> <span><span class="kbd">⌘</span> + <span class="kbd">K</span></span></div>
+      <div><span>Copy query to clipboard</span> <span><span class="kbd">⌘</span> + <span class="kbd">Shift</span> + <span class="kbd">C</span></span></div>
+      <div><span>Save current dork</span> <span><span class="kbd">⌘</span> + <span class="kbd">S</span></span></div>
+      <div><span>Toggle light / dark</span> <span><span class="kbd">⌘</span> + <span class="kbd">Shift</span> + <span class="kbd">L</span></span></div>
+      <div><span>Close a modal</span> <span><span class="kbd">Esc</span></span></div>
+    </div>
+    <div class="m-actions">
+      <button class="btn small primary" data-close-modal>close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-save">
+  <div class="modal">
+    <h3 id="modal-save-title">Save this dork</h3>
+    <p>Give it a name so you can find it back. Notes and status are optional — but for CVD work they matter a week later.</p>
+    <label style="font-size:11px;letter-spacing:.06em;color:var(--meta);text-transform:uppercase;">name</label>
+    <input class="txt" id="save-name" placeholder="e.g. acme-cvd-env-leak">
+    <label style="font-size:11px;letter-spacing:.06em;color:var(--meta);text-transform:uppercase;">notes (optional)</label>
+    <textarea id="save-notes" placeholder="e.g. target=acme.com — 3 hits, disclosed via security@acme.com on 2026-09-14 (ticket #CVD-042)"></textarea>
+    <label style="font-size:11px;letter-spacing:.06em;color:var(--meta);text-transform:uppercase;margin-top:10px;display:block;">status</label>
+    <div class="seg" id="save-status" style="margin-top:6px;">
+      <button data-status="open" class="active">open</button>
+      <button data-status="reported">reported</button>
+      <button data-status="resolved">resolved</button>
+    </div>
+    <div class="m-actions">
+      <button class="btn small" data-close-modal>cancel</button>
+      <button class="btn small primary" id="save-confirm">save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-reverse">
+  <div class="modal">
+    <h3>Import from URL or query string</h3>
+    <p>Paste a Google search URL (<code>https://www.google.com/search?q=…</code>) or just a raw dork string. The parsed query lands in the raw override — from there you can tweak it or use <b>fill from phases</b> to keep going.</p>
+    <textarea id="reverse-input" placeholder="https://www.google.com/search?q=site%3Aexample.com+filetype%3Apdf"></textarea>
+    <div class="m-actions">
+      <button class="btn small" data-close-modal>cancel</button>
+      <button class="btn small primary" id="reverse-confirm">import</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-bulk">
+  <div class="modal">
+    <h3>Bulk target sweep</h3>
+    <p>Paste multiple domains, one per line. Each becomes a separate dork by substituting the current builder's <code>{{target}}</code>. Use for scope sweeps across a portfolio of acquisitions, subsidiaries, or brand variants.</p>
+    <textarea id="bulk-input" placeholder="acme.com&#10;acme.io&#10;acmecorp.eu&#10;acme-labs.io"></textarea>
+    <div class="m-actions">
+      <button class="btn small" data-close-modal>cancel</button>
+      <button class="btn small primary" id="bulk-run">generate</button>
+    </div>
+    <div class="bulk-results" id="bulk-results"></div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-cvd">
+  <div class="modal">
+    <h3>CVD disclosure snippet</h3>
+    <p>A neutral, factual starter for a coordinated vulnerability disclosure email. Edit before sending — this is intentionally plain so it slots into your organisation's own template.</p>
+    <label style="font-size:11px;letter-spacing:.06em;color:var(--meta);text-transform:uppercase;">first hit URL (optional)</label>
+    <input class="txt" id="cvd-hit-url" placeholder="https://example.com/.env">
+    <label style="font-size:11px;letter-spacing:.06em;color:var(--meta);text-transform:uppercase;">what was found</label>
+    <input class="txt" id="cvd-what" placeholder="e.g. exposed .env file with database credentials">
+    <textarea id="cvd-template" style="margin-top:10px;"></textarea>
+    <div class="m-actions">
+      <button class="btn small" data-close-modal>close</button>
+      <button class="btn small" id="cvd-copy">copy</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const STATE_KEY   = "ferret-state-v1";
+  const HISTORY_KEY = "ferret-history-v1";
+  const SAVED_KEY   = "ferret-saved-v1";
+  const FAVES_KEY   = "ferret-faves-v1";
+  const USER_RECIPES_KEY = "ferret-user-recipes-v1";
+  const THEME_KEY   = "ferret-theme";
+  const MAX_RECENT  = 20;
+
+  // ---------- state model ----------
+  const emptyState = () => ({
+    target: "",
+    site: [], siteNeg: [],
+    related: "", cache: "",
+    keywords: [],
+    wild: "",
+    rngMin: "", rngMax: "",
+    aroundA: "", aroundN: "", aroundB: "",
+    intitle: [], inurl: [], intext: [], inanchor: [],
+    allintitle: "", allinurl: "", allintext: "", allinanchor: "",
+    filetype: [],
+    after: "", before: "",
+    social: [],
+    info: "", link: "",
+    rawExtra: "",
+    override: "",
+  });
+
+  let state = emptyState();
+  try {
+    const saved = JSON.parse(localStorage.getItem(STATE_KEY) || "null");
+    if (saved && typeof saved === "object") state = { ...emptyState(), ...saved };
+  } catch (_) {}
+
+  // ---------- URL hash import ----------
+  function loadFromHash() {
+    if (!location.hash) return false;
+    const m = location.hash.match(/^#s=(.+)$/);
+    if (!m) return false;
+    try {
+      const json = decodeURIComponent(escape(atob(m[1].replace(/-/g,"+").replace(/_/g,"/"))));
+      const parsed = JSON.parse(json);
+      if (parsed && typeof parsed === "object") {
+        state = { ...emptyState(), ...parsed };
+        return true;
+      }
+    } catch (e) { console.warn("hash decode failed", e); }
+    return false;
+  }
+  if (loadFromHash()) {
+    history.replaceState(null, "", location.pathname + location.search);
+  }
+
+  // ---------- persistence ----------
+  const save = () => {
+    try { localStorage.setItem(STATE_KEY, JSON.stringify(state)); } catch (_) {}
+  };
+
+  // ---------- placeholder substitution ----------
+  function subPlaceholders(s) {
+    if (!s || typeof s !== "string") return s;
+    const t = (state.target || "").trim();
+    return s
+      .replace(/\{\{target\}\}/gi, t || "{{target}}")
+      .replace(/\{\{target-email\}\}/gi, t ? `@${t}` : "@{{target}}")
+      .replace(/\{\{target-nowww\}\}/gi, (t || "{{target}}").replace(/^www\./,""));
+  }
+  function subChip(v) { return subPlaceholders(v); }
+
+  // ---------- assembler ----------
+  function quote(v) {
+    v = String(v).trim();
+    if (!v) return "";
+    if (v.startsWith('"') && v.endsWith('"')) return v;
+    return /\s/.test(v) ? `"${v}"` : v;
+  }
+  function assemble() {
+    const parts = [];
+    const orGroup = [];
+    for (const k of state.keywords) {
+      const t = subChip((k.text || "").trim());
+      if (!t) continue;
+      if (k.mode === "exact") parts.push(t.startsWith('"') ? t : `"${t}"`);
+      else if (k.mode === "exclude") parts.push(t.startsWith("-") ? t : `-${t}`);
+      else if (k.mode === "or") orGroup.push(t.replace(/^"|"$/g, ""));
+      else parts.push(t);
+    }
+    if (orGroup.length) {
+      parts.push(`(${orGroup.map(t => /\s/.test(t) ? `"${t}"` : t).join(" OR ")})`);
+    }
+    if (state.wild.trim()) {
+      const w = subChip(state.wild.trim());
+      parts.push(w.startsWith('"') ? w : `"${w}"`);
+    }
+    if (state.rngMin && state.rngMax) parts.push(`${state.rngMin.trim()}..${state.rngMax.trim()}`);
+    if (state.aroundA.trim() && state.aroundB.trim() && state.aroundN) {
+      parts.push(`${quote(subChip(state.aroundA))} AROUND(${state.aroundN}) ${quote(subChip(state.aroundB))}`);
+    }
+    if (state.site.length) {
+      const sites = state.site.map(subChip);
+      if (sites.length === 1) parts.push(`site:${sites[0]}`);
+      else parts.push(`(${sites.map(s => `site:${s}`).join(" OR ")})`);
+    }
+    for (const s of state.siteNeg) parts.push(`-site:${subChip(s)}`);
+    for (const t of state.intitle)  parts.push(`intitle:${quote(subChip(t))}`);
+    for (const t of state.inurl)    parts.push(`inurl:${quote(subChip(t))}`);
+    for (const t of state.intext)   parts.push(`intext:${quote(subChip(t))}`);
+    for (const t of state.inanchor) parts.push(`inanchor:${quote(subChip(t))}`);
+    if (state.allintitle.trim())   parts.push(`allintitle:${subChip(state.allintitle.trim())}`);
+    if (state.allinurl.trim())     parts.push(`allinurl:${subChip(state.allinurl.trim())}`);
+    if (state.allintext.trim())    parts.push(`allintext:${subChip(state.allintext.trim())}`);
+    if (state.allinanchor.trim())  parts.push(`allinanchor:${subChip(state.allinanchor.trim())}`);
+    if (state.filetype.length) {
+      if (state.filetype.length === 1) parts.push(`filetype:${state.filetype[0]}`);
+      else parts.push(`(${state.filetype.map(f => `filetype:${f}`).join(" OR ")})`);
+    }
+    if (state.after)  parts.push(`after:${state.after.trim()}`);
+    if (state.before) parts.push(`before:${state.before.trim()}`);
+    for (const s of state.social) parts.push(subChip(s));
+    if (state.related.trim()) parts.push(`related:${state.related.trim()}`);
+    if (state.cache.trim())   parts.push(`cache:${state.cache.trim()}`);
+    if (state.info.trim())    parts.push(`info:${state.info.trim()}`);
+    if (state.link.trim())    parts.push(`link:${state.link.trim()}`);
+    if (state.rawExtra.trim()) parts.push(subPlaceholders(state.rawExtra.trim()));
+    return parts.join(" ");
+  }
+  function currentQuery() {
+    return (state.override && state.override.trim()) ? subPlaceholders(state.override.trim()) : assemble();
+  }
+
+  // ---------- highlight ----------
+  function highlight(q) {
+    if (!q) return "";
+    return q
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/\{\{[^}]+\}\}/g, (m) => `<span class="ph">${m}</span>`)
+      .replace(/"([^"]*)"/g, (_, s) => `<span class="str">"${s}"</span>`)
+      .replace(/\b(site|intitle|allintitle|inurl|allinurl|intext|allintext|inanchor|allinanchor|filetype|ext|cache|related|info|link|after|before|daterange|loc|location|weather|stocks|movie|map|blogurl)(:)/g,
+        (_, op, c) => `<span class="op">${op}${c}</span>`)
+      .replace(/(^|\s)(-\S+)/g, (_, sp, w) => `${sp}<span class="neg">${w}</span>`)
+      .replace(/\b(OR|AROUND)\b/g, `<span class="grp">$1</span>`);
+  }
+
+  // ---------- preview ----------
+  const previewEl = document.getElementById("preview");
+  const previewLen = document.getElementById("preview-len");
+  const previewWarn = document.getElementById("preview-warn");
+  function renderPreview() {
+    const q = currentQuery();
+    if (!q) {
+      previewEl.classList.add("empty");
+      previewEl.innerHTML = "nothing yet — set a target, then load a recipe or fill in phase 1";
+      previewLen.textContent = "0 chars";
+      previewWarn.style.display = "none";
+      return;
+    }
+    previewEl.classList.remove("empty");
+    previewEl.innerHTML = highlight(q);
+    const enc = encodeURIComponent(q).length;
+    previewLen.textContent = `${q.length} chars · ${enc} url-encoded`;
+    previewWarn.style.display = enc > 2000 ? "" : "none";
+  }
+
+  // ---------- chip-input ----------
+  function bindChipInput(rootId, key) {
+    const root = document.getElementById(rootId);
+    const input = root.querySelector("input");
+    const chipClass = root.classList.contains("neg") ? "chip neg" : "chip";
+    const render = () => {
+      [...root.querySelectorAll(".chip")].forEach(c => c.remove());
+      (state[key] || []).forEach((val, i) => {
+        const chip = document.createElement("span");
+        chip.className = chipClass;
+        chip.textContent = val;
+        const btn = document.createElement("button");
+        btn.type = "button"; btn.innerHTML = "&times;"; btn.ariaLabel = "remove";
+        btn.addEventListener("click", () => { state[key].splice(i, 1); save(); renderAll(); });
+        chip.appendChild(btn);
+        root.insertBefore(chip, input);
+      });
+    };
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === "," || (e.key === "Tab" && input.value.trim())) {
+        const v = input.value.trim().replace(/,$/, "");
+        if (v) {
+          state[key] = state[key] || [];
+          if (!state[key].includes(v)) state[key].push(v);
+          input.value = "";
+          save(); renderAll();
+          if (e.key !== "Tab") e.preventDefault();
+        }
+      } else if (e.key === "Backspace" && !input.value && state[key] && state[key].length) {
+        state[key].pop(); save(); renderAll();
+      }
+    });
+    input.addEventListener("blur", () => {
+      const v = input.value.trim();
+      if (v) {
+        state[key] = state[key] || [];
+        if (!state[key].includes(v)) state[key].push(v);
+        input.value = ""; save(); renderAll();
+      }
+    });
+    root.addEventListener("click", (e) => { if (e.target === root) input.focus(); });
+    return { render };
+  }
+
+  function bindKeywords() {
+    const root = document.getElementById("in-keywords");
+    const input = root.querySelector("input");
+    const modeSeg = document.getElementById("kw-mode");
+    let mode = "plain";
+    modeSeg.addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-mode]");
+      if (!b) return;
+      mode = b.dataset.mode;
+      [...modeSeg.querySelectorAll("button")].forEach(x => x.classList.toggle("active", x === b));
+      input.focus();
+    });
+    const render = () => {
+      [...root.querySelectorAll(".chip")].forEach(c => c.remove());
+      (state.keywords || []).forEach((k, i) => {
+        const chip = document.createElement("span");
+        let cls = "chip";
+        if (k.mode === "exclude") cls += " neg";
+        else if (k.mode === "exact") cls += " exact";
+        else if (k.mode === "or") cls += " mode-or";
+        chip.className = cls;
+        const label = document.createElement("span");
+        if (k.mode === "exact") label.textContent = `"${k.text}"`;
+        else if (k.mode === "exclude") label.textContent = `-${k.text}`;
+        else if (k.mode === "or") label.textContent = `OR ${k.text}`;
+        else label.textContent = k.text;
+        chip.appendChild(label);
+        const btn = document.createElement("button");
+        btn.type = "button"; btn.innerHTML = "&times;";
+        btn.addEventListener("click", () => { state.keywords.splice(i, 1); save(); renderAll(); });
+        chip.appendChild(btn);
+        root.insertBefore(chip, input);
+      });
+    };
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === ",") {
+        const v = input.value.trim().replace(/,$/, "");
+        if (v) {
+          state.keywords = state.keywords || [];
+          state.keywords.push({ text: v.replace(/^"|"$/g, "").replace(/^-/, ""), mode });
+          input.value = ""; save(); renderAll();
+          e.preventDefault();
+        }
+      } else if (e.key === "Backspace" && !input.value && state.keywords && state.keywords.length) {
+        state.keywords.pop(); save(); renderAll();
+      }
+    });
+    input.addEventListener("blur", () => {
+      const v = input.value.trim();
+      if (v) {
+        state.keywords = state.keywords || [];
+        state.keywords.push({ text: v.replace(/^"|"$/g, "").replace(/^-/, ""), mode });
+        input.value = ""; save(); renderAll();
+      }
+    });
+    root.addEventListener("click", (e) => { if (e.target === root) input.focus(); });
+    return { render };
+  }
+
+  function bindText(id, key) {
+    const el = document.getElementById(id);
+    el.value = state[key] || "";
+    el.addEventListener("input", () => { state[key] = el.value; save(); renderPreview(); });
+    return () => { el.value = state[key] || ""; };
+  }
+
+  // ---------- filetype picker ----------
+  const FILETYPE_PRESETS = [
+    "pdf","doc","docx","xls","xlsx","csv","ppt","pptx","txt","rtf",
+    "sql","db","json","xml","yml","yaml","env","log","conf","ini",
+    "zip","tar","gz","7z","bak","old",
+    "git","key","pem","p12","pfx",
+    "jpg","png","svg","mp4","mp3",
+    "html","php","asp","aspx","jsp","ipynb"
+  ];
+  function renderFiletypePicker() {
+    const box = document.getElementById("filetype-picker");
+    box.innerHTML = "";
+    FILETYPE_PRESETS.forEach(ext => {
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = ext;
+      if ((state.filetype || []).includes(ext)) b.classList.add("on");
+      b.addEventListener("click", () => {
+        state.filetype = state.filetype || [];
+        const i = state.filetype.indexOf(ext);
+        if (i >= 0) state.filetype.splice(i, 1);
+        else state.filetype.push(ext);
+        save(); renderAll();
+      });
+      box.appendChild(b);
+    });
+  }
+
+  // ---------- recipes ----------
+  const RECIPES = [
+    // OSINT
+    { cat:"OSINT",  title:"Exposed documents",       desc:"site:X filetype:pdf|xlsx",     apply:(s)=>{ s.site=["{{target}}"]; s.filetype=["pdf","xlsx","docx"]; } },
+    { cat:"OSINT",  title:"Docs mentioning a person",desc:"intext:name filetype:pdf",     apply:(s)=>{ s.intext=["John Doe"]; s.filetype=["pdf","docx","pptx"]; } },
+    { cat:"PEOPLE", title:"LinkedIn profiles",       desc:"site:linkedin.com/in role/org",apply:(s)=>{ s.site=["linkedin.com/in"]; s.keywords=[{text:"CISO",mode:"exact"},{text:"{{target}}",mode:"exact"}]; } },
+    { cat:"PEOPLE", title:"Org chart / staff pages", desc:"intitle:\"our team\"|staff",   apply:(s)=>{ s.site=["{{target}}"]; s.intitle=["our team","staff","leadership"]; } },
+    { cat:"OSINT",  title:"Email address leaks",     desc:"\"@target\" filetype:txt|csv", apply:(s)=>{ s.keywords=[{text:"{{target-email}}",mode:"exact"}]; s.filetype=["txt","csv","xlsx","log"]; } },
+    { cat:"OSINT",  title:"Pastebin dumps",          desc:"site:pastebin.com target",     apply:(s)=>{ s.site=["pastebin.com","ghostbin.com","paste.ee","hastebin.com","controlc.com","rentry.co"]; s.keywords=[{text:"{{target}}",mode:"exact"}]; } },
+
+    // EXPOSE
+    { cat:"EXPOSE", title:"Directory listings",      desc:"intitle:\"index of\" parent",  apply:(s)=>{ s.intitle=["index of"]; s.keywords=[{text:"parent directory",mode:"exact"}]; s.siteNeg=["w3.org"]; } },
+    { cat:"EXPOSE", title:"Login pages on target",   desc:"site:X inurl:login|signin",    apply:(s)=>{ s.site=["{{target}}"]; s.inurl=["login","signin","admin","auth","sso"]; } },
+    { cat:"EXPOSE", title:"phpMyAdmin exposed",      desc:"intitle:phpMyAdmin",           apply:(s)=>{ s.intitle=["phpMyAdmin"]; s.intext=["Welcome to phpMyAdmin"]; } },
+    { cat:"EXPOSE", title:"Jenkins dashboards",      desc:"intitle:\"Dashboard [Jenkins]\"",apply:(s)=>{ s.intitle=["Dashboard [Jenkins]"]; s.intext=["People","Build History"]; } },
+    { cat:"EXPOSE", title:"Grafana dashboards",      desc:"intitle:\"Grafana\" login",    apply:(s)=>{ s.intitle=["Grafana"]; s.inurl=["/login","/d/"]; } },
+    { cat:"EXPOSE", title:"Kibana / Elastic UI",     desc:"intitle:Kibana",               apply:(s)=>{ s.intitle=["Kibana","Elasticsearch"]; s.inurl=["/app/kibana","/_plugin/kibana"]; } },
+    { cat:"EXPOSE", title:"Adminer login",           desc:"intitle:\"Adminer\" login",    apply:(s)=>{ s.intitle=["Adminer"]; s.inurl=["adminer.php"]; } },
+    { cat:"EXPOSE", title:"WebDAV directories",      desc:"intitle:\"WebDAV\"",           apply:(s)=>{ s.intitle=["WebDAV","index of /webdav"]; } },
+    { cat:"EXPOSE", title:"Cameras / IoT feeds",     desc:"intitle:\"live view\" IP cam", apply:(s)=>{ s.intitle=["live view","webcam","AXIS"]; s.inurl=["view/view.shtml","view/index.shtml","axis-cgi/mjpg"]; } },
+    { cat:"EXPOSE", title:"SQL error leaks",         desc:"\"SQL syntax\" live pages",    apply:(s)=>{ s.keywords=[{text:"SQL syntax",mode:"exact"},{text:"mysql",mode:"or"},{text:"postgresql",mode:"or"},{text:"mariadb",mode:"or"}]; s.siteNeg=["stackoverflow.com","github.com"]; } },
+    { cat:"EXPOSE", title:"WordPress debug.log",     desc:"inurl:wp-content debug.log",   apply:(s)=>{ s.inurl=["wp-content/debug.log"]; s.intext=["PHP Notice","PHP Warning"]; } },
+    { cat:"EXPOSE", title:".DS_Store leaks",         desc:"webserver-indexed .DS_Store",  apply:(s)=>{ s.intitle=["index of"]; s.intext=[".DS_Store"]; } },
+
+    // CVD
+    { cat:"CVD", title:".env file on webserver",     desc:"filetype:env DB_PASSWORD",     apply:(s)=>{ s.filetype=["env"]; s.keywords=[{text:"DB_PASSWORD",mode:"or"},{text:"APP_KEY",mode:"or"},{text:"SECRET_KEY",mode:"or"}]; s.siteNeg=["github.com","gitlab.com","bitbucket.org"]; s.site=["{{target}}"]; } },
+    { cat:"CVD", title:"Exposed .git repo",          desc:"inurl:.git/config|HEAD",       apply:(s)=>{ s.inurl=[".git/config",".git/HEAD",".git/index"]; s.siteNeg=["github.com","gitlab.com"]; s.site=["{{target}}"]; } },
+    { cat:"CVD", title:"AWS access keys",            desc:"AWS_ACCESS_KEY_ID / AKIA*",    apply:(s)=>{ s.keywords=[{text:"AWS_ACCESS_KEY_ID",mode:"or"},{text:"AWS_SECRET_ACCESS_KEY",mode:"or"},{text:"AKIA",mode:"or"}]; s.filetype=["env","json","yml","yaml","log","txt","config"]; s.siteNeg=["github.com","stackoverflow.com","docs.aws.amazon.com"]; } },
+    { cat:"CVD", title:"GCP service account keys",   desc:"\"type\":\"service_account\"", apply:(s)=>{ s.keywords=[{text:"service_account",mode:"exact"},{text:"private_key",mode:"exact"},{text:"client_email",mode:"exact"}]; s.filetype=["json"]; s.siteNeg=["github.com","googleapis.com","cloud.google.com"]; } },
+    { cat:"CVD", title:"Azure connection strings",   desc:"DefaultEndpointsProtocol=…",   apply:(s)=>{ s.keywords=[{text:"DefaultEndpointsProtocol=https",mode:"exact"},{text:"AccountKey=",mode:"exact"}]; s.filetype=["env","config","json","xml","txt"]; } },
+    { cat:"CVD", title:"Slack tokens (xoxb/xoxp)",   desc:"xox[baprs]-… tokens",          apply:(s)=>{ s.keywords=[{text:"xoxb-",mode:"or"},{text:"xoxp-",mode:"or"},{text:"xoxa-",mode:"or"},{text:"xoxs-",mode:"or"}]; s.siteNeg=["github.com","slack.com","api.slack.com"]; } },
+    { cat:"CVD", title:"Slack webhooks",             desc:"hooks.slack.com/services/…",   apply:(s)=>{ s.keywords=[{text:"hooks.slack.com/services",mode:"exact"}]; s.siteNeg=["github.com","slack.com"]; } },
+    { cat:"CVD", title:"GitHub personal tokens",     desc:"ghp_/ghs_/gho_ tokens",        apply:(s)=>{ s.keywords=[{text:"ghp_",mode:"or"},{text:"ghs_",mode:"or"},{text:"gho_",mode:"or"},{text:"github_pat_",mode:"or"}]; s.siteNeg=["github.com","github.blog","docs.github.com"]; } },
+    { cat:"CVD", title:"Stripe live keys",           desc:"sk_live_ / rk_live_",          apply:(s)=>{ s.keywords=[{text:"sk_live_",mode:"or"},{text:"rk_live_",mode:"or"}]; s.siteNeg=["github.com","stripe.com","docs.stripe.com"]; } },
+    { cat:"CVD", title:"Twilio credentials",         desc:"AC…/SK… + auth token",         apply:(s)=>{ s.keywords=[{text:"TWILIO_ACCOUNT_SID",mode:"or"},{text:"TWILIO_AUTH_TOKEN",mode:"or"}]; s.filetype=["env","json","yml","config"]; } },
+    { cat:"CVD", title:"SendGrid API keys",          desc:"SG.… tokens",                  apply:(s)=>{ s.keywords=[{text:"SENDGRID_API_KEY",mode:"or"},{text:"SG.",mode:"or"}]; s.filetype=["env","json","yml","config","txt"]; s.siteNeg=["sendgrid.com","github.com"]; } },
+    { cat:"CVD", title:"Mailgun API keys",           desc:"key-… / MAILGUN_*",            apply:(s)=>{ s.keywords=[{text:"MAILGUN_API_KEY",mode:"or"},{text:"MAILGUN_SMTP_PASSWORD",mode:"or"}]; s.filetype=["env","json","yml","config"]; } },
+    { cat:"CVD", title:"Google Maps API keys",       desc:"AIza… in source",              apply:(s)=>{ s.keywords=[{text:"AIzaSy",mode:"plain"}]; s.filetype=["js","html","json"]; s.siteNeg=["github.com","googleapis.com"]; } },
+    { cat:"CVD", title:"Firebase config exposed",    desc:"firebaseio.com + apiKey",      apply:(s)=>{ s.keywords=[{text:"firebaseio.com",mode:"or"},{text:"firebaseapp.com",mode:"or"}]; s.intext=["apiKey"]; s.filetype=["js","html","json"]; } },
+    { cat:"CVD", title:"Firebase RTDB open",         desc:"firebaseio.com/.json",         apply:(s)=>{ s.inurl=["firebaseio.com",".json"]; } },
+    { cat:"CVD", title:"OpenAI / LLM keys",          desc:"sk-… / OPENAI_API_KEY",        apply:(s)=>{ s.keywords=[{text:"OPENAI_API_KEY",mode:"or"},{text:"ANTHROPIC_API_KEY",mode:"or"},{text:"HUGGINGFACE_TOKEN",mode:"or"}]; s.filetype=["env","json","yml","txt","ipynb"]; s.siteNeg=["github.com","openai.com","huggingface.co"]; } },
+    { cat:"CVD", title:"Private SSH keys",           desc:"BEGIN OPENSSH/RSA PRIVATE KEY",apply:(s)=>{ s.keywords=[{text:"BEGIN OPENSSH PRIVATE KEY",mode:"exact"},{text:"BEGIN RSA PRIVATE KEY",mode:"or"},{text:"BEGIN EC PRIVATE KEY",mode:"or"}]; s.siteNeg=["github.com","ietf.org","openssl.org"]; } },
+    { cat:"CVD", title:"TLS keys / .pem exposure",   desc:"filetype:pem BEGIN PRIVATE",   apply:(s)=>{ s.filetype=["pem","key","p12","pfx"]; s.keywords=[{text:"BEGIN PRIVATE KEY",mode:"exact"}]; } },
+    { cat:"CVD", title:"htpasswd / auth files",      desc:"filetype:htpasswd",            apply:(s)=>{ s.filetype=["htpasswd"]; s.intitle=["index of"]; } },
+    { cat:"CVD", title:"WP wp-config.php backup",    desc:"wp-config.php.bak/.old/.swp",  apply:(s)=>{ s.keywords=[{text:"DB_PASSWORD",mode:"exact"}]; s.inurl=["wp-config.php.bak","wp-config.php.old","wp-config.php.swp","wp-config.txt","wp-config.php~"]; s.site=["{{target}}"]; } },
+    { cat:"CVD", title:"Laravel .env leak",          desc:"APP_KEY + DB_PASSWORD",        apply:(s)=>{ s.keywords=[{text:"APP_KEY=base64",mode:"exact"},{text:"DB_PASSWORD",mode:"exact"}]; s.filetype=["env"]; s.siteNeg=["github.com","laravel.com"]; s.site=["{{target}}"]; } },
+    { cat:"CVD", title:"Django settings leak",       desc:"SECRET_KEY in settings.py",    apply:(s)=>{ s.keywords=[{text:"SECRET_KEY = '",mode:"exact"},{text:"DEBUG = True",mode:"exact"}]; s.filetype=["py"]; s.siteNeg=["github.com","djangoproject.com"]; } },
+    { cat:"CVD", title:"Node config w/ secrets",     desc:"config.json passwords",        apply:(s)=>{ s.filetype=["json"]; s.keywords=[{text:"\"password\":",mode:"exact"},{text:"\"apiKey\":",mode:"or"},{text:"\"token\":",mode:"or"}]; s.siteNeg=["github.com","npmjs.com"]; } },
+    { cat:"CVD", title:"Docker-compose w/ pw",       desc:"filetype:yml docker + pw",     apply:(s)=>{ s.filetype=["yml","yaml"]; s.keywords=[{text:"MYSQL_ROOT_PASSWORD",mode:"or"},{text:"POSTGRES_PASSWORD",mode:"or"},{text:"REDIS_PASSWORD",mode:"or"}]; s.siteNeg=["github.com","hub.docker.com"]; } },
+    { cat:"CVD", title:"Kubernetes secrets YAML",    desc:"kind: Secret + data:",         apply:(s)=>{ s.keywords=[{text:"kind: Secret",mode:"exact"},{text:"data:",mode:"exact"}]; s.filetype=["yml","yaml"]; s.siteNeg=["github.com","kubernetes.io"]; } },
+    { cat:"CVD", title:"Terraform state files",      desc:"terraform.tfstate w/ secrets", apply:(s)=>{ s.filetype=["tfstate"]; s.keywords=[{text:"\"outputs\"",mode:"exact"}]; s.siteNeg=["github.com","terraform.io"]; } },
+    { cat:"CVD", title:"Ansible vault files",        desc:"$ANSIBLE_VAULT header",        apply:(s)=>{ s.keywords=[{text:"$ANSIBLE_VAULT;1.1;AES256",mode:"exact"}]; s.siteNeg=["github.com","ansible.com"]; } },
+    { cat:"CVD", title:"CI vars in GitHub Actions",  desc:"secrets.* in workflow yml",    apply:(s)=>{ s.keywords=[{text:"${{ secrets.",mode:"exact"}]; s.filetype=["yml","yaml"]; s.inurl=[".github/workflows"]; } },
+    { cat:"CVD", title:"Jupyter notebooks w/ keys",  desc:"filetype:ipynb + api_key",     apply:(s)=>{ s.filetype=["ipynb"]; s.keywords=[{text:"api_key",mode:"or"},{text:"apikey",mode:"or"},{text:"secret_key",mode:"or"}]; s.siteNeg=["github.com","kaggle.com","colab.research.google.com"]; } },
+    { cat:"CVD", title:"Postman collections public", desc:"getpostman.com/collections",   apply:(s)=>{ s.site=["www.postman.com","getpostman.com","documenter.getpostman.com"]; s.keywords=[{text:"Authorization",mode:"exact"},{text:"Bearer",mode:"or"},{text:"api-key",mode:"or"}]; } },
+    { cat:"CVD", title:"Swagger / OpenAPI leaks",    desc:"swagger.json + Bearer",        apply:(s)=>{ s.inurl=["swagger","openapi.json","api-docs"]; s.keywords=[{text:"Bearer",mode:"or"},{text:"apiKey",mode:"or"}]; s.site=["{{target}}"]; } },
+    { cat:"CVD", title:"SonarQube exposed",          desc:"intitle:SonarQube",            apply:(s)=>{ s.intitle=["SonarQube"]; s.inurl=["/sonar"]; } },
+    { cat:"CVD", title:"Open S3 buckets",            desc:"site:s3.amazonaws.com target", apply:(s)=>{ s.site=["s3.amazonaws.com","storage.googleapis.com","blob.core.windows.net","digitaloceanspaces.com"]; s.keywords=[{text:"{{target}}",mode:"plain"}]; } },
+    { cat:"CVD", title:"Public bucket listings",     desc:"AWS bucket XML listing",       apply:(s)=>{ s.site=["s3.amazonaws.com"]; s.intext=["ListBucketResult","<Key>"]; } },
+    { cat:"CVD", title:"Trello public + credentials",desc:"trello.com + password",        apply:(s)=>{ s.site=["trello.com"]; s.keywords=[{text:"password",mode:"or"},{text:"api key",mode:"or"},{text:"credentials",mode:"or"},{text:"{{target}}",mode:"exact"}]; } },
+    { cat:"CVD", title:"Confluence internal pages",  desc:"atlassian.net internal docs",  apply:(s)=>{ s.site=["atlassian.net","confluence"]; s.intext=["confidential","internal only"]; } },
+    { cat:"CVD", title:"Notion public with secrets", desc:"notion.site + api key",        apply:(s)=>{ s.site=["notion.site"]; s.keywords=[{text:"api_key",mode:"or"},{text:"password",mode:"or"}]; } },
+    { cat:"CVD", title:"SQL dumps exposed",          desc:"filetype:sql INSERT INTO",     apply:(s)=>{ s.filetype=["sql"]; s.keywords=[{text:"INSERT INTO",mode:"exact"},{text:"users",mode:"or"},{text:"password",mode:"or"}]; s.siteNeg=["github.com"]; } },
+    { cat:"CVD", title:"Backup files (.bak/.old)",   desc:"filetype:bak w/ secrets",      apply:(s)=>{ s.filetype=["bak","old","backup","orig"]; s.keywords=[{text:"password",mode:"or"},{text:"secret",mode:"or"}]; } },
+    { cat:"CVD", title:"Vim swap files exposed",     desc:"filetype:swp .env.swp",        apply:(s)=>{ s.filetype=["swp","swo"]; } },
+    { cat:"CVD", title:"Config-file family",         desc:"env|config|ini|yml + pw",      apply:(s)=>{ s.filetype=["env","config","ini","yml","yaml","conf"]; s.keywords=[{text:"password",mode:"or"},{text:"secret",mode:"or"},{text:"token",mode:"or"},{text:"api_key",mode:"or"}]; s.siteNeg=["github.com","stackoverflow.com"]; } },
+    { cat:"CVD", title:"Basic-auth in URL",          desc:"https://user:pass@host",       apply:(s)=>{ s.keywords=[{text:"https://",mode:"exact"},{text:":@",mode:"exact"}]; s.filetype=["md","txt","log","env"]; s.siteNeg=["github.com","stackoverflow.com"]; } },
+
+    // DEV
+    { cat:"DEV",   title:"Public Trello board",        desc:"site:trello.com \"company\"",  apply:(s)=>{ s.site=["trello.com"]; s.keywords=[{text:"{{target}}",mode:"exact"}]; } },
+    { cat:"DEV",   title:"Public GitHub gists",        desc:"site:gist.github.com target",  apply:(s)=>{ s.site=["gist.github.com"]; s.keywords=[{text:"{{target}}",mode:"exact"}]; } },
+    { cat:"FILES", title:"Exec / director bios (PDF)", desc:"exec name filetype:pdf",       apply:(s)=>{ s.filetype=["pdf"]; s.intext=["Chief Executive Officer","board of directors"]; } },
+  ];
+
+  // ---------- user recipes (custom) ----------
+  let userRecipes = [];
+  try { userRecipes = JSON.parse(localStorage.getItem(USER_RECIPES_KEY) || "[]") || []; } catch (_) {}
+  const persistUserRecipes = () => {
+    try { localStorage.setItem(USER_RECIPES_KEY, JSON.stringify(userRecipes)); } catch (_) {}
+  };
+  // Convert current state into an "apply" function
+  function stateToRecipeApply(snap) {
+    return (s) => {
+      Object.keys(snap).forEach(k => {
+        if (k === "target" || k === "override") return; // don't force these
+        s[k] = Array.isArray(snap[k]) ? [...snap[k]] : (typeof snap[k] === "object" && snap[k] !== null ? JSON.parse(JSON.stringify(snap[k])) : snap[k]);
+      });
+    };
+  }
+  function allRecipes() {
+    return [
+      ...userRecipes.map(r => ({ ...r, cat: "USER", user: true, apply: stateToRecipeApply(r.state) })),
+      ...RECIPES,
+    ];
+  }
+
+  // ---------- favorites ----------
+  let favorites = [];
+  try { favorites = JSON.parse(localStorage.getItem(FAVES_KEY) || "[]") || []; } catch (_) {}
+  const persistFavorites = () => {
+    try { localStorage.setItem(FAVES_KEY, JSON.stringify(favorites)); } catch (_) {}
+  };
+  function recipeKey(r) { return `${r.cat}::${r.title}`; }
+  function isFave(r) { return favorites.includes(recipeKey(r)); }
+  function toggleFave(r) {
+    const k = recipeKey(r);
+    const i = favorites.indexOf(k);
+    if (i >= 0) favorites.splice(i, 1);
+    else favorites.push(k);
+    persistFavorites(); renderRecipes(); renderCatFilter();
+  }
+
+  // ---------- categories ----------
+  const RECIPE_CATS = ["ALL","CVD","EXPOSE","OSINT","PEOPLE","DEV","FILES","USER"];
+  let activeCat = "ALL";
+  let searchQ = "";
+
+  function catCount(cat) {
+    const q = searchQ.trim().toLowerCase();
+    return allRecipes().filter(r => {
+      if (cat !== "ALL" && r.cat !== cat) return false;
+      if (!q) return true;
+      return (r.title + " " + (r.desc || "") + " " + r.cat).toLowerCase().includes(q);
+    }).length;
+  }
+  function renderCatFilter() {
+    const bar = document.getElementById("cat-filter");
+    bar.innerHTML = "";
+    RECIPE_CATS.forEach(c => {
+      const n = catCount(c);
+      if (c === "USER" && n === 0) return; // hide USER if none
+      const b = document.createElement("button");
+      b.type = "button";
+      b.innerHTML = `${c}<span class="cnt">${n}</span>`;
+      if (c === activeCat) b.classList.add("on");
+      b.addEventListener("click", () => { activeCat = c; renderCatFilter(); renderRecipes(); });
+      bar.appendChild(b);
+    });
+  }
+
+  function renderRecipes() {
+    const grid = document.getElementById("recipe-grid");
+    grid.innerHTML = "";
+    const q = searchQ.trim().toLowerCase();
+    const list = allRecipes().filter(r => {
+      if (activeCat !== "ALL" && r.cat !== activeCat) return false;
+      if (!q) return true;
+      return (r.title + " " + (r.desc || "") + " " + r.cat).toLowerCase().includes(q);
+    });
+    if (!list.length) {
+      const div = document.createElement("div");
+      div.className = "recipe-empty";
+      div.textContent = "No recipes match — try clearing the search or a different category.";
+      grid.appendChild(div);
+      return;
+    }
+    const faves = list.filter(isFave);
+    const rest  = list.filter(r => !isFave(r));
+
+    const addSection = (label) => {
+      const h = document.createElement("div");
+      h.className = "recipe-section-title";
+      h.textContent = label;
+      grid.appendChild(h);
+    };
+    const makeCard = (r) => {
+      const b = document.createElement("button");
+      b.className = "recipe" + (r.user ? " user" : "");
+      b.type = "button";
+      const catBadge = `<span class="r-cat ${r.cat}">${r.cat}</span>`;
+      b.innerHTML = `
+        <button type="button" class="r-star ${isFave(r) ? "on" : ""}" title="Favorite">${isFave(r) ? "★" : "☆"}</button>
+        ${catBadge}
+        <div class="r-title">${r.title}</div>
+        <div class="r-desc">${r.desc || ""}</div>
+        ${r.user ? '<div class="r-actions"><button type="button" title="Delete this user recipe">×</button></div>' : ''}
+      `;
+      const starBtn = b.querySelector(".r-star");
+      starBtn.addEventListener("click", (e) => { e.stopPropagation(); toggleFave(r); });
+      if (r.user) {
+        const delBtn = b.querySelector(".r-actions button");
+        delBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (!confirm(`Delete recipe "${r.title}"?`)) return;
+          userRecipes = userRecipes.filter(x => x.title !== r.title);
+          persistUserRecipes(); renderRecipes(); renderCatFilter();
+        });
+      }
+      b.addEventListener("click", () => {
+        if (currentQuery() && !confirm("Load this recipe? Current builder contents will be overwritten (target field is kept).")) return;
+        const savedTarget = state.target;
+        state = emptyState();
+        state.target = savedTarget;
+        r.apply(state);
+        save(); renderAll(true);
+      });
+      grid.appendChild(b);
+    };
+
+    if (faves.length) {
+      addSection("★ favorites");
+      faves.forEach(makeCard);
+      if (rest.length) addSection("all");
+    }
+    rest.forEach(makeCard);
+  }
+
+  // ---------- history ----------
+  let history = { recent: [], saved: [] };
+  try {
+    history.recent = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]") || [];
+    history.saved  = JSON.parse(localStorage.getItem(SAVED_KEY)   || "[]") || [];
+  } catch (_) {}
+  function persistHistory() {
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history.recent.slice(0, MAX_RECENT)));
+      localStorage.setItem(SAVED_KEY,   JSON.stringify(history.saved));
+    } catch (_) {}
+  }
+  function addRecent(q) {
+    q = (q || "").trim(); if (!q) return;
+    history.recent = history.recent.filter(x => x.q !== q);
+    history.recent.unshift({ q, t: Date.now() });
+    history.recent = history.recent.slice(0, MAX_RECENT);
+    persistHistory(); renderHistory();
+  }
+  function renderHistoryList(list, targetId, isSaved) {
+    const target = document.getElementById(targetId);
+    target.innerHTML = "";
+    if (!list.length) {
+      target.innerHTML = `<div class="h-empty">${isSaved ? "Nothing saved yet — click <b>save</b> in the top bar to promote a dork." : "No recent queries yet."}</div>`;
+      return;
+    }
+    list.forEach((item, i) => {
+      const row = document.createElement("div");
+      row.className = "h-item";
+      const q = document.createElement("div");
+      const dateStr = new Date(item.t).toLocaleString();
+      let statusHtml = "";
+      if (isSaved) {
+        const st = item.status || "open";
+        statusHtml = `<button type="button" class="status-chip ${st}" data-status="${st}" title="Click to cycle status">${st}</button>`;
+      }
+      q.innerHTML = `
+        <div class="q">${highlight(item.q)}</div>
+        <div class="m">
+          ${isSaved ? `<b style="color:var(--ink);">${(item.name || "unnamed").replace(/</g,"&lt;")}</b>` : ""}
+          ${statusHtml}
+          <span>${dateStr}</span>
+        </div>
+        ${isSaved && item.notes ? `<div class="notes">${item.notes.replace(/</g,"&lt;")}</div>` : ""}
+      `;
+      if (isSaved) {
+        const statusBtn = q.querySelector(".status-chip");
+        if (statusBtn) statusBtn.addEventListener("click", () => {
+          const cycle = { open:"reported", reported:"resolved", resolved:"open" };
+          item.status = cycle[item.status || "open"];
+          persistHistory(); renderHistory();
+        });
+      }
+      const btns = document.createElement("div");
+      btns.className = "h-btns";
+      const cpy = document.createElement("button"); cpy.className = "btn small"; cpy.textContent = "copy";
+      cpy.addEventListener("click", () => copyText(item.q, cpy));
+      const lnc = document.createElement("button"); lnc.className = "btn small primary"; lnc.textContent = "launch";
+      lnc.addEventListener("click", () => launchQuery(item.q));
+      const use = document.createElement("button"); use.className = "btn small"; use.textContent = "load";
+      use.title = "Put in raw override";
+      use.addEventListener("click", () => {
+        state.override = item.q;
+        document.getElementById("raw-edit").value = item.q;
+        save(); renderPreview();
+      });
+      const del = document.createElement("button"); del.className = "btn small warn"; del.textContent = "×"; del.title = "Remove";
+      del.addEventListener("click", () => { list.splice(i, 1); persistHistory(); renderHistory(); });
+      if (isSaved) {
+        const edt = document.createElement("button"); edt.className = "btn small"; edt.textContent = "edit";
+        edt.addEventListener("click", () => openSaveModal(item, i));
+        btns.append(edt, use, cpy, lnc, del);
+      } else {
+        btns.append(use, cpy, lnc, del);
+      }
+      row.append(q, btns);
+      target.appendChild(row);
+    });
+  }
+  function renderHistory() {
+    renderHistoryList(history.saved,  "saved-list",  true);
+    renderHistoryList(history.recent, "recent-list", false);
+  }
+
+  // ---------- actions ----------
+  async function copyText(text, btn) {
+    try { await navigator.clipboard.writeText(text); }
+    catch (_) {
+      const ta = document.createElement("textarea");
+      ta.value = text; document.body.appendChild(ta);
+      ta.select(); try { document.execCommand("copy"); } catch (_) {}
+      document.body.removeChild(ta);
+    }
+    if (btn) {
+      const old = btn.textContent;
+      btn.classList.add("done"); btn.textContent = "copied";
+      setTimeout(() => { btn.classList.remove("done"); btn.textContent = old; }, 1200);
+    }
+  }
+
+  // ---------- search engines ----------
+  const ENGINES = [
+    { id:"google",     label:"Google",           url:"https://www.google.com/search?q=" },
+    { id:"ddg",        label:"DuckDuckGo",       url:"https://duckduckgo.com/?q=" },
+    { id:"bing",       label:"Bing",             url:"https://www.bing.com/search?q=" },
+    { id:"yandex",     label:"Yandex",           url:"https://yandex.com/search/?text=" },
+    { id:"scholar",    label:"Google Scholar",   url:"https://scholar.google.com/scholar?q=" },
+    { id:"github",     label:"GitHub code",      url:"https://github.com/search?type=code&q=" },
+    { id:"grepapp",    label:"grep.app (code)",  url:"https://grep.app/search?q=" },
+  ];
+  function launchQuery(q, engineId) {
+    q = (q || currentQuery()).trim(); if (!q) return;
+    addRecent(q);
+    const eng = ENGINES.find(e => e.id === engineId) || ENGINES[0];
+    window.open(eng.url + encodeURIComponent(q), "_blank", "noopener");
+  }
+  function renderEngineMenu() {
+    const menu = document.getElementById("engine-menu");
+    menu.innerHTML = "";
+    ENGINES.forEach(e => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.innerHTML = `<span>${e.label}</span><small>${new URL(e.url).hostname.replace(/^www\./,"")}</small>`;
+      b.addEventListener("click", () => { menu.classList.remove("open"); launchQuery(null, e.id); });
+      menu.appendChild(b);
+    });
+  }
+
+  // ---------- share ----------
+  function encodeState() {
+    const clone = { ...state };
+    // Drop empty fields to keep URL short
+    Object.keys(clone).forEach(k => {
+      const v = clone[k];
+      if (v == null || v === "" || (Array.isArray(v) && v.length === 0)) delete clone[k];
+    });
+    const json = JSON.stringify(clone);
+    return btoa(unescape(encodeURIComponent(json))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+  }
+  function shareUrl() {
+    return `${location.origin}${location.pathname}#s=${encodeState()}`;
+  }
+
+  // ---------- render bindings ----------
+  const chipBinders = {};
+  function initChips() {
+    chipBinders.site       = bindChipInput("in-site",       "site");
+    chipBinders.siteNeg    = bindChipInput("in-site-neg",   "siteNeg");
+    chipBinders.intitle    = bindChipInput("in-intitle",    "intitle");
+    chipBinders.inurl      = bindChipInput("in-inurl",      "inurl");
+    chipBinders.intext     = bindChipInput("in-intext",     "intext");
+    chipBinders.inanchor   = bindChipInput("in-inanchor",   "inanchor");
+    chipBinders.filetype   = bindChipInput("in-filetype",   "filetype");
+    chipBinders.social     = bindChipInput("in-social",     "social");
+    chipBinders.keywords   = bindKeywords();
+  }
+  const textRefreshers = [];
+  function initTexts() {
+    textRefreshers.length = 0;
+    textRefreshers.push(bindText("in-target",     "target"));
+    textRefreshers.push(bindText("in-related",    "related"));
+    textRefreshers.push(bindText("in-cache",      "cache"));
+    textRefreshers.push(bindText("in-wild",       "wild"));
+    textRefreshers.push(bindText("in-rng-min",    "rngMin"));
+    textRefreshers.push(bindText("in-rng-max",    "rngMax"));
+    textRefreshers.push(bindText("in-around-a",   "aroundA"));
+    textRefreshers.push(bindText("in-around-n",   "aroundN"));
+    textRefreshers.push(bindText("in-around-b",   "aroundB"));
+    textRefreshers.push(bindText("in-allintitle", "allintitle"));
+    textRefreshers.push(bindText("in-allinurl",   "allinurl"));
+    textRefreshers.push(bindText("in-allintext",  "allintext"));
+    textRefreshers.push(bindText("in-allinanchor","allinanchor"));
+    textRefreshers.push(bindText("in-after",      "after"));
+    textRefreshers.push(bindText("in-before",     "before"));
+    textRefreshers.push(bindText("in-info",       "info"));
+    textRefreshers.push(bindText("in-link",       "link"));
+    textRefreshers.push(bindText("in-raw-extra",  "rawExtra"));
+  }
+  function renderAll(refreshInputs = false) {
+    if (refreshInputs) textRefreshers.forEach(f => f());
+    Object.values(chipBinders).forEach(b => b.render());
+    renderFiletypePicker();
+    renderPreview();
+    const raw = document.getElementById("raw-edit");
+    if (raw && raw.value !== state.override) raw.value = state.override || "";
+    renderCatFilter();
+  }
+
+  // ---------- modals ----------
+  function openModal(id) { document.getElementById(id).classList.add("open"); }
+  function closeModal(el) { el.classList.remove("open"); }
+  document.querySelectorAll(".modal-backdrop").forEach(bd => {
+    bd.addEventListener("click", (e) => { if (e.target === bd) closeModal(bd); });
+    bd.querySelectorAll("[data-close-modal]").forEach(b => b.addEventListener("click", () => closeModal(bd)));
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      document.querySelectorAll(".modal-backdrop.open").forEach(closeModal);
+      document.getElementById("engine-menu").classList.remove("open");
+    }
+  });
+
+  // ---------- SAVE modal ----------
+  let saveEditingIndex = -1;
+  function openSaveModal(existing, idx) {
+    saveEditingIndex = idx == null ? -1 : idx;
+    const modal = document.getElementById("modal-save");
+    document.getElementById("modal-save-title").textContent = existing ? "Edit saved dork" : "Save this dork";
+    document.getElementById("save-name").value  = existing?.name  || "";
+    document.getElementById("save-notes").value = existing?.notes || "";
+    const st = existing?.status || "open";
+    document.querySelectorAll("#save-status button").forEach(b => b.classList.toggle("active", b.dataset.status === st));
+    openModal("modal-save");
+    setTimeout(() => document.getElementById("save-name").focus(), 50);
+  }
+  document.getElementById("save-status").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-status]"); if (!b) return;
+    document.querySelectorAll("#save-status button").forEach(x => x.classList.toggle("active", x === b));
+  });
+  document.getElementById("save-confirm").addEventListener("click", () => {
+    const name = document.getElementById("save-name").value.trim();
+    if (!name) return alert("Please enter a name.");
+    const notes = document.getElementById("save-notes").value;
+    const status = document.querySelector("#save-status button.active")?.dataset.status || "open";
+    if (saveEditingIndex >= 0) {
+      const it = history.saved[saveEditingIndex];
+      it.name = name; it.notes = notes; it.status = status; it.t = Date.now();
+    } else {
+      const q = currentQuery();
+      if (!q) return alert("Nothing to save yet.");
+      history.saved.unshift({ name, q, notes, status, t: Date.now() });
+    }
+    persistHistory(); renderHistory();
+    closeModal(document.getElementById("modal-save"));
+  });
+
+  // ---------- top-bar wiring ----------
+  document.getElementById("copy-dork").addEventListener("click", (e) => {
+    const q = currentQuery(); if (!q) return;
+    copyText(q, e.currentTarget);
+  });
+  document.getElementById("launch-dork").addEventListener("click", () => launchQuery());
+  document.getElementById("save-dork").addEventListener("click", () => {
+    if (!currentQuery()) return alert("Nothing to save yet.");
+    openSaveModal();
+  });
+  document.getElementById("reset-all").addEventListener("click", () => {
+    if (!confirm("Clear every field? Saved dorks, favorites, and history stay.")) return;
+    state = emptyState();
+    save(); renderAll(true);
+    document.getElementById("raw-edit").value = "";
+  });
+  document.getElementById("share-dork").addEventListener("click", (e) => {
+    if (!currentQuery() && !state.target && !state.override) return alert("Nothing to share yet.");
+    copyText(shareUrl(), e.currentTarget);
+  });
+
+  // Engine menu
+  const engineMenu = document.getElementById("engine-menu");
+  const engineToggle = document.getElementById("engine-toggle");
+  engineToggle.addEventListener("click", (e) => {
+    e.stopPropagation();
+    engineMenu.classList.toggle("open");
+  });
+  document.addEventListener("click", (e) => {
+    if (!engineMenu.contains(e.target) && e.target !== engineToggle) engineMenu.classList.remove("open");
+  });
+  renderEngineMenu();
+
+  // History bulk actions
+  document.getElementById("clear-history").addEventListener("click", () => {
+    if (!confirm("Erase Saved and Recent lists?")) return;
+    history.saved = []; history.recent = [];
+    persistHistory(); renderHistory();
+  });
+  document.getElementById("export-saved").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(history.saved, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `ferret-saved-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  });
+  document.getElementById("import-saved").addEventListener("click", () => document.getElementById("import-file").click());
+  document.getElementById("import-file").addEventListener("change", (e) => {
+    const f = e.target.files?.[0]; if (!f) return;
+    const fr = new FileReader();
+    fr.onload = () => {
+      try {
+        const arr = JSON.parse(fr.result);
+        if (!Array.isArray(arr)) throw new Error("Not an array");
+        let added = 0;
+        arr.forEach(x => {
+          if (!x || !x.q) return;
+          const key = (x.name || "") + "::" + x.q;
+          if (history.saved.some(y => (y.name || "") + "::" + y.q === key)) return;
+          history.saved.push({
+            name: String(x.name || "imported"),
+            q: String(x.q),
+            notes: String(x.notes || ""),
+            status: ["open","reported","resolved"].includes(x.status) ? x.status : "open",
+            t: Number(x.t) || Date.now(),
+          });
+          added++;
+        });
+        persistHistory(); renderHistory();
+        alert(`Imported ${added} new dork(s). Duplicates skipped.`);
+      } catch (err) { alert("Import failed: " + err.message); }
+    };
+    fr.readAsText(f);
+    e.target.value = "";
+  });
+
+  // Recipe controls
+  document.getElementById("add-recipe").addEventListener("click", () => {
+    const q = currentQuery();
+    if (!q) return alert("Fill in the builder first, then save it as a recipe.");
+    const title = prompt("Recipe name:", "");
+    if (!title || !title.trim()) return;
+    const desc = prompt("Short description (one line):", assemble().slice(0, 60)) || "";
+    // deep-clone current state minus override/target
+    const snap = JSON.parse(JSON.stringify(state));
+    delete snap.override;
+    userRecipes.unshift({ title: title.trim(), desc: desc.trim(), state: snap });
+    persistUserRecipes(); renderRecipes(); renderCatFilter();
+  });
+
+  // Bottom action row
+  document.getElementById("copy-dork-2").addEventListener("click", (e) => {
+    const q = currentQuery(); if (!q) return;
+    copyText(q, e.currentTarget);
+  });
+  document.getElementById("launch-dork-2").addEventListener("click", () => launchQuery());
+
+  // Raw
+  const rawEl = document.getElementById("raw-edit");
+  rawEl.value = state.override || "";
+  rawEl.addEventListener("input", () => { state.override = rawEl.value; save(); renderPreview(); });
+  document.getElementById("raw-fill").addEventListener("click", () => {
+    const q = assemble(); state.override = q; rawEl.value = q; save(); renderPreview();
+  });
+  document.getElementById("raw-clear").addEventListener("click", () => {
+    state.override = ""; rawEl.value = ""; save(); renderPreview();
+  });
+
+  // Reverse import
+  document.getElementById("reverse-import").addEventListener("click", () => {
+    document.getElementById("reverse-input").value = "";
+    openModal("modal-reverse");
+    setTimeout(() => document.getElementById("reverse-input").focus(), 50);
+  });
+  document.getElementById("reverse-confirm").addEventListener("click", () => {
+    const raw = document.getElementById("reverse-input").value.trim();
+    if (!raw) return;
+    let q = raw;
+    try {
+      const u = new URL(raw);
+      const qp = u.searchParams.get("q") || u.searchParams.get("query") || u.searchParams.get("text");
+      if (qp) q = qp;
+    } catch (_) { /* not a URL — treat as raw */ }
+    state.override = q; rawEl.value = q; save(); renderPreview();
+    closeModal(document.getElementById("modal-reverse"));
+  });
+
+  // Bulk
+  document.getElementById("bulk-btn").addEventListener("click", () => {
+    document.getElementById("bulk-input").value = "";
+    document.getElementById("bulk-results").innerHTML = "";
+    openModal("modal-bulk");
+    setTimeout(() => document.getElementById("bulk-input").focus(), 50);
+  });
+  document.getElementById("bulk-run").addEventListener("click", () => {
+    const lines = document.getElementById("bulk-input").value.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const box = document.getElementById("bulk-results"); box.innerHTML = "";
+    if (!lines.length) { box.innerHTML = `<div class="h-empty" style="padding:8px 0;">Paste at least one target on its own line.</div>`; return; }
+    if (lines.length > 40 && !confirm(`Generate ${lines.length} queries? This will produce a long list.`)) return;
+    const savedTarget = state.target;
+    lines.forEach(dom => {
+      state.target = dom;
+      const q = currentQuery();
+      const row = document.createElement("div"); row.className = "b-row";
+      row.innerHTML = `<div class="q">${highlight(q)}</div><div class="b-btns"></div>`;
+      const btns = row.querySelector(".b-btns");
+      const cpy = document.createElement("button"); cpy.className = "btn small"; cpy.textContent = "copy";
+      cpy.addEventListener("click", () => copyText(q, cpy));
+      const lnc = document.createElement("button"); lnc.className = "btn small primary"; lnc.textContent = "launch";
+      lnc.addEventListener("click", () => launchQuery(q));
+      btns.append(cpy, lnc);
+      box.appendChild(row);
+    });
+    state.target = savedTarget; renderPreview();
+  });
+
+  // CVD template
+  function buildCvdTemplate() {
+    const q = currentQuery() || "(paste the dork used here)";
+    const hit = document.getElementById("cvd-hit-url").value.trim() || "(URL of the first hit)";
+    const what = document.getElementById("cvd-what").value.trim() || "(short description of what was found)";
+    const target = state.target || "(organisation)";
+    const today = new Date().toISOString().slice(0,10);
+    return `Subject: Coordinated Vulnerability Disclosure — ${what} at ${target}
+
+Beste Security Team van ${target},
+
+Ik neem contact op in het kader van coordinated vulnerability disclosure (CVD).
+Op ${today} kwam ik via een publieke zoekopdracht een situatie tegen die naar
+alle waarschijnlijkheid onbedoeld openbaar is en die snelle mitigatie verdient.
+
+Bevinding:
+  ${what}
+
+Voorbeeld-URL:
+  ${hit}
+
+Reproductie (Google-zoekopdracht):
+  ${q}
+
+Ik heb geen verdere handelingen uitgevoerd dan het bekijken van de publieke
+resultaten en heb geen data gedownload of gedeeld. Ik verzoek u de blootstelling
+zo spoedig mogelijk te dichten en, indien van toepassing, de bijbehorende
+secrets/keys te rotereren.
+
+Graag hoor ik van u of deze melding in goede orde is ontvangen. Op verzoek
+teken ik graag een geheimhoudingsverklaring en/of stem ik af over een
+gecoordineerde publicatietermijn.
+
+Met vriendelijke groet,
+`;
+  }
+  function refreshCvdTemplate() {
+    document.getElementById("cvd-template").value = buildCvdTemplate();
+  }
+  function openCvdModal() {
+    document.getElementById("cvd-hit-url").value = "";
+    document.getElementById("cvd-what").value = "";
+    refreshCvdTemplate();
+    openModal("modal-cvd");
+  }
+  document.getElementById("cvd-btn").addEventListener("click", openCvdModal);
+  document.getElementById("cvd-btn-top").addEventListener("click", openCvdModal);
+  document.getElementById("cvd-hit-url").addEventListener("input", refreshCvdTemplate);
+  document.getElementById("cvd-what").addEventListener("input", refreshCvdTemplate);
+  document.getElementById("cvd-copy").addEventListener("click", (e) => {
+    copyText(document.getElementById("cvd-template").value, e.currentTarget);
+  });
+
+  // Shortcuts modal
+  document.getElementById("shortcuts-btn").addEventListener("click", () => openModal("modal-shortcuts"));
+  document.getElementById("footer-shortcuts").addEventListener("click", () => openModal("modal-shortcuts"));
+
+  // Regex reference
+  const REFERENCE = [
+    { name:"AWS access key",       pattern:"AKIA[0-9A-Z]{16}",         example:"AKIAIOSFODNN7EXAMPLE", desc:"20 chars, starts with AKIA. IAM access key ID." },
+    { name:"AWS session token",    pattern:"ASIA[0-9A-Z]{16}",         example:"ASIAxxxxxxxxxxxxxxxx", desc:"20 chars, starts with ASIA. Temporary STS token id." },
+    { name:"GitHub PAT (classic)", pattern:"ghp_[A-Za-z0-9]{36}",      example:"ghp_16C7e42F292c6912E7710c838347Ae178B4a", desc:"Personal access token, classic scheme." },
+    { name:"GitHub PAT (fine)",    pattern:"github_pat_[A-Za-z0-9_]{22,255}", example:"github_pat_11ABCDEF0…", desc:"Fine-grained token, longer prefix." },
+    { name:"GitHub server token",  pattern:"ghs_[A-Za-z0-9]{36}",      example:"ghs_…", desc:"GitHub server-to-server or Actions token." },
+    { name:"Slack bot token",      pattern:"xoxb-[0-9]+-[0-9]+-[A-Za-z0-9]{24}", example:"xoxb-1234-5678-abcdEFGH…", desc:"Bot token for a Slack app." },
+    { name:"Slack user token",     pattern:"xoxp-[0-9]+-[0-9]+-[0-9]+-[a-f0-9]{32}", example:"xoxp-…-…-…-…", desc:"User OAuth token — high privilege." },
+    { name:"Slack webhook",        pattern:"hooks\\.slack\\.com/services/T[A-Z0-9]+/B[A-Z0-9]+/[A-Za-z0-9]+", example:"hooks.slack.com/services/T00/B00/XXX", desc:"Incoming webhook URL — post-only, still leaky." },
+    { name:"Stripe live secret",   pattern:"sk_live_[A-Za-z0-9]{24,}", example:"sk_live_51H…", desc:"Live-mode secret key — full account access." },
+    { name:"Stripe restricted",    pattern:"rk_live_[A-Za-z0-9]{24,}", example:"rk_live_…", desc:"Live restricted key — scoped rights." },
+    { name:"SendGrid API key",     pattern:"SG\\.[A-Za-z0-9_-]{22}\\.[A-Za-z0-9_-]{43}", example:"SG.abc…", desc:"Send email as the account." },
+    { name:"Google API key",       pattern:"AIza[0-9A-Za-z-_]{35}",    example:"AIzaSyD-…", desc:"Google Cloud API key (Maps, YT, Places, etc.)." },
+    { name:"Twilio account SID",   pattern:"AC[a-f0-9]{32}",           example:"ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", desc:"Twilio account identifier." },
+    { name:"Twilio API key",       pattern:"SK[a-f0-9]{32}",           example:"SKxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", desc:"Twilio API key SID." },
+    { name:"JWT",                  pattern:"eyJ[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+", example:"eyJhbGci…​.eyJzdWI….…", desc:"Three base64url parts separated by dots." },
+    { name:"Private SSH key",      pattern:"-----BEGIN OPENSSH PRIVATE KEY-----", example:"-----BEGIN OPENSSH PRIVATE KEY-----", desc:"OpenSSH private key header." },
+    { name:"RSA private key",      pattern:"-----BEGIN RSA PRIVATE KEY-----", example:"-----BEGIN RSA PRIVATE KEY-----", desc:"PKCS#1 RSA private key header." },
+    { name:"PEM private key",      pattern:"-----BEGIN PRIVATE KEY-----", example:"-----BEGIN PRIVATE KEY-----", desc:"PKCS#8 private key header." },
+    { name:"Azure conn string",    pattern:"DefaultEndpointsProtocol=https;.*AccountKey=[^;]+", example:"DefaultEndpointsProtocol=https;AccountName=xxx;AccountKey=…==", desc:"Storage account connection string." },
+    { name:"Firebase URL",         pattern:"[a-z0-9-]+\\.firebaseio\\.com", example:"my-app.firebaseio.com", desc:"Realtime database URL — try /.json for open reads." },
+    { name:"OpenAI key",           pattern:"sk-[A-Za-z0-9]{20,}",       example:"sk-…", desc:"Generic OpenAI-style API key prefix." },
+    { name:"Anthropic key",        pattern:"sk-ant-[a-z0-9-]{80,}",     example:"sk-ant-api03-…", desc:"Anthropic API key." },
+  ];
+  function renderReference() {
+    const list = document.getElementById("ref-list");
+    list.innerHTML = "";
+    REFERENCE.forEach(r => {
+      const el = document.createElement("div"); el.className = "ref-item";
+      el.innerHTML = `
+        <h4>${r.name}</h4>
+        <code class="p-pattern">${r.pattern.replace(/</g,"&lt;")}</code>
+        <div class="p-example">${r.example.replace(/</g,"&lt;")}</div>
+        <p class="p-desc">${r.desc}</p>
+      `;
+      list.appendChild(el);
+    });
+  }
+
+  // ---------- theme ----------
+  const themeBtn = document.getElementById("theme");
+  let storedTheme = null;
+  try { storedTheme = localStorage.getItem(THEME_KEY); } catch (_) {}
+  if (storedTheme === "dark" || storedTheme === "light") {
+    document.documentElement.setAttribute("data-theme", storedTheme);
+  }
+  function toggleTheme() {
+    const current = document.documentElement.getAttribute("data-theme");
+    let next;
+    if (current === "dark") next = "light";
+    else if (current === "light") next = "dark";
+    else next = matchMedia("(prefers-color-scheme: dark)").matches ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    try { localStorage.setItem(THEME_KEY, next); } catch (_) {}
+  }
+  themeBtn.addEventListener("click", toggleTheme);
+
+  // ---------- keyboard shortcuts ----------
+  document.addEventListener("keydown", (e) => {
+    const mod = e.metaKey || e.ctrlKey;
+    if (!mod) return;
+    // don't hijack when typing in an <input> unless it's a "global" combo like Enter/S/K
+    const inField = /^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName || "");
+    if (e.key === "Enter") { e.preventDefault(); launchQuery(); return; }
+    if (e.key.toLowerCase() === "k") {
+      e.preventDefault();
+      document.getElementById("recipe-search").focus();
+      return;
+    }
+    if (e.key.toLowerCase() === "s") {
+      e.preventDefault();
+      if (currentQuery()) openSaveModal();
+      return;
+    }
+    if (e.shiftKey && e.key.toLowerCase() === "c" && !inField) {
+      e.preventDefault();
+      const q = currentQuery();
+      if (q) copyText(q);
+    }
+    if (e.shiftKey && e.key.toLowerCase() === "l") {
+      e.preventDefault(); toggleTheme();
+    }
+  });
+
+  // ---------- boot ----------
+  initChips();
+  initTexts();
+  renderCatFilter();
+  renderRecipes();
+  const searchEl = document.getElementById("recipe-search");
+  searchEl.addEventListener("input", () => { searchQ = searchEl.value; renderRecipes(); renderCatFilter(); });
+  renderReference();
+  renderAll(true);
+  renderHistory();
+})();
+</script>
